@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "module": "commonjs",
+        "target": "es5",
+        "lib": ["ES2019"],
+        "downlevelIteration": true,
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "declaration": true,
+        "composite": true,
+        "declarationMap": true,
+        "forceConsistentCasingInFileNames": true,
+        "allowJs": false,
+        "resolveJsonModule": true,
+        "importHelpers": true,
+        "noUnusedLocals": true,
+        "noImplicitReturns": true,
+        "skipLibCheck": true
+    }
+}

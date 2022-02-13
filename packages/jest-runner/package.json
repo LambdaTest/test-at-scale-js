@@ -1,0 +1,37 @@
+{
+  "name": "@lambdatest/test-at-scale-jest-runner",
+  "version": "0.0.0",
+  "description": "Jest custom runner",
+  "author": "Saurabh Prakash <saurabhp@lambdatest.com>",
+  "homepage": "https://github.com/LambdaTest/test-at-scale-js#readme",
+  "license": "ISC",
+  "main": "dist/src/jest-runner.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "bin": {
+    "jest-runner": "dist/src/jest-runner.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LambdaTest/test-at-scale-js.git",
+    "directory": "packages/jest-runner"
+  },
+  "scripts": {
+    "build": "npm run clean && npm run install-peers && npm run compile",
+    "clean": "rimraf dist",
+    "compile": "tsc",
+    "test": "echo \"Error: run tests from root\" && exit 1",
+    "install-peers": "install-peers -f"
+  },
+  "dependencies": {
+    "@lambdatest/test-at-scale-core": "^0.0.0",
+    "fast-glob": "^3.2.7",
+    "semver": "^7.3.5",
+    "yargs": "^17.1.0"
+  },
+  "peerDependencies": {
+    "@types/jest": "^27.0.1",
+    "jest": ">=21.2.1"
+  }
+}
