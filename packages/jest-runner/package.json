@@ -1,6 +1,6 @@
 {
   "name": "@lambdatest/test-at-scale-jest-runner",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Jest custom runner",
   "author": "Saurabh Prakash <saurabhp@lambdatest.com>",
   "homepage": "https://github.com/LambdaTest/test-at-scale-js#readme",
@@ -25,7 +25,7 @@
     "install-peers": "install-peers -f"
   },
   "dependencies": {
-    "@lambdatest/test-at-scale-core": "^0.0.1",
+    "@lambdatest/test-at-scale-core": "^0.0.2",
     "fast-glob": "^3.2.7",
     "semver": "^7.3.5",
     "yargs": "^17.1.0"
