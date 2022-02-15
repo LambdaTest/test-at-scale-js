@@ -102,7 +102,9 @@ class MochaRunner implements TestRunner {
         const testRunTask = new Task<void>();
 
         Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+        const skipTestStats = argv.skipteststats as boolean || false;
+        const n = argv.n as number || 1
+        const postTestResultsEndpoint = (skipTestStats) ? "" : (process.env.ENDPOINT_POST_TEST_RESULTS as string || "");
         const taskID = process.env.TASK_ID as ID;
         const buildID = process.env.BUILD_ID as ID;
         const orgID = process.env.ORG_ID as ID;
@@ -135,30 +137,38 @@ class MochaRunner implements TestRunner {
         for (const filename of testFilesToProcessList) {
             this.mocha.addFile(filename);
         }
-        const runnerWithResults: CustomRunner = this.mocha.run((failures: number) => {
-            console.error("# of failed tests:", failures);
-            testRunTask.resolve();
-        });
-        await testRunTask.promise;
-        const results = new ExecutionResult(
-            taskID,
-            buildID,
-            repoID,
-            commitID,
-            orgID,
-            runnerWithResults.testResults ?? [],
-            runnerWithResults.testSuiteResults ?? []
-        );
-        results.testResults = results.testResults.concat(this._blocklistedTests);
-        results.testSuiteResults = results.testSuiteResults.concat(this._blocklistedSuites);
-        Util.handleDuplicateTests(results.testResults);
-        if (this._testlocator.size > 0) {
-            results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
-                this._testlocator, this._blockListedLocators)
+        (this.mocha as any).cleanReferencesAfterRun(false)
+        const executionResults: ExecutionResult[] = []
+        for (let i=1; i<=n; i++) {   
+            const runnerWithResults: CustomRunner = this.mocha.run((failures: number) => {
+                console.error("# of failed tests:", failures);
+                testRunTask.resolve();
+            });
+            await testRunTask.promise;
+            const results = new ExecutionResult(
+                taskID,
+                buildID,
+                repoID,
+                commitID,
+                orgID,
+                runnerWithResults.testResults ?? [],
+                runnerWithResults.testSuiteResults ?? []
+            );
+            results.testResults = results.testResults.concat(this._blocklistedTests);
+            results.testSuiteResults = results.testSuiteResults.concat(this._blocklistedSuites);
+            Util.handleDuplicateTests(results.testResults);
+            if (this._testlocator.size > 0) {
+                results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
+                    this._testlocator, this._blockListedLocators)
+            }
+            if (postTestResultsEndpoint) {
+                await Util.makeApiRequestPost(postTestResultsEndpoint, results);
+            }
+            executionResults.push(results)
         }
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, results);
-        }
+        const testfilepath = process.env.FLAKY_TEST_RESULT_FILE_PATH as string; 
+        fs.writeFileSync(testfilepath, JSON.stringify(executionResults)); 
+        this.mocha.dispose();
         return results;
     }
 

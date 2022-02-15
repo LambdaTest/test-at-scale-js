@@ -70,7 +70,9 @@ class JasmineRunner implements TestRunner {
         const entityIdFilenameMap = new Map<number, string>();
 
         Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+        const n = argv.n as number || 1
+        const skipTestStats = argv.skipteststats as boolean || false;
+        const postTestResultsEndpoint = (skipTestStats) ? "" : (process.env.ENDPOINT_POST_TEST_RESULTS as string || "");
         const taskID = process.env.TASK_ID as ID;
         const buildID = process.env.BUILD_ID as ID;
         const orgID = process.env.ORG_ID as ID;
@@ -104,31 +106,36 @@ class JasmineRunner implements TestRunner {
                 return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
             }
 
-            const jasmineObj = await this.createJasmineRunner(argv.config);
-            await this.loadSpecs(jasmineObj, testFilesToProcessList, entityIdFilenameMap);
-            const specIdsToRun: number[] = [];
-            this.fetchSpecIdsToRun(jasmine.getEnv().topSuite(), specIdsToRun, entityIdFilenameMap,
-                testLocators, blockListedLocators);
-            if (specIdsToRun.length == 0) {
-                // pushing an invalid specID because if we pass empty array, it runs all specs
-                specIdsToRun.push(-1);
-            }
-            const reporter = new CustomReporter(runTask, entityIdFilenameMap);
-            jasmineObj.env.addReporter(reporter);
-            await jasmine.getEnv().execute(specIdsToRun as unknown as jasmine.Suite[]);
-            const executionResults = await runTask.promise;
-            Util.handleDuplicateTests(executionResults.testResults);
-            if (locators.length > 0) {
-                executionResults.testResults = Util.filterTestResultsByTestLocator(executionResults.testResults,
-                    testLocators, blockListedLocators)
-                if (executionResults.testSuiteResults.length > 0) {
-                    executionResults.testSuiteResults = Util.filterTestSuiteResults(executionResults.testResults,
-                        executionResults.testSuiteResults)
+            const executionResults: ExecutionResult[] = []
+            for (let i=1; i<=n; i++) {    
+                const jasmineObj = await this.createJasmineRunner(argv.config);
+                await this.loadSpecs(jasmineObj, testFilesToProcessList, entityIdFilenameMap);
+                const specIdsToRun: number[] = [];
+                this.fetchSpecIdsToRun(jasmine.getEnv().topSuite(), specIdsToRun, entityIdFilenameMap,
+                    testLocators, blockListedLocators);
+                if (specIdsToRun.length == 0) {
+                    // pushing an invalid specID because if we pass empty array, it runs all specs
+                    specIdsToRun.push(-1);
+                }
+                const reporter = new CustomReporter(runTask, entityIdFilenameMap);
+                jasmineObj.env.addReporter(reporter);
+                await jasmine.getEnv().execute(specIdsToRun as unknown as jasmine.Suite[]);
+                const executionResults = await runTask.promise;
+                Util.handleDuplicateTests(executionResults.testResults);
+                if (locators.length > 0) {
+                    executionResults.testResults = Util.filterTestResultsByTestLocator(executionResults.testResults,
+                        testLocators, blockListedLocators)
+                    if (executionResults.testSuiteResults.length > 0) {
+                        executionResults.testSuiteResults = Util.filterTestSuiteResults(executionResults.testResults,
+                            executionResults.testSuiteResults)
+                    }
+                }
+                if (postTestResultsEndpoint) {
+                    await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
                 }
             }
-            if (postTestResultsEndpoint) {
-                await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
-            }
+            const testfilepath = process.env.FLAKY_TEST_RESULT_FILE_PATH as string;     
+            await fs.writeFile(testfilepath, JSON.stringify(executionResults)); 
             return executionResults;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
