@@ -14,9 +14,6 @@
     "url": "https://github.com/LambdaTest/test-at-scale-js.git",
     "directory": "packages/jasmine-runner"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "build": "npm run clean && npm run install-peers && npm run compile",
     "clean": "rimraf dist",

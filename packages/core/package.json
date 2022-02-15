@@ -12,9 +12,6 @@
     "url": "https://github.com/LambdaTest/test-at-scale-js.git",
     "directory": "packages/core"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "build": "npm run clean && npm run compile",
     "clean": "rimraf dist",
