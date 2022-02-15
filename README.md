@@ -1,7 +1,8 @@
 
 # test-at-scale-js
 
-Custom runners written on top of javascript testing frameworks.
+Custom runners written on top of javascript testing frameworks. For running TestAtScale (TAS) locally follow [link](https://github.com/LambdaTest/test-at-scale).
+
 ## Project Structure
 
 Monorepo consisting of separate packages for each javascript testing framework managed using lerna.
@@ -27,6 +28,6 @@ Use `lerna` [commands](https://github.com/lerna/lerna/tree/main/commands/add#ler
 
 ## Used By
 
-This project is used by the following companies:
+This project is used by:
 
 - LambdaTest [TAS](https://tas.lambdatest.com/)
