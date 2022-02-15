@@ -95,12 +95,14 @@ export class Util {
     }
 
     static getFilesFromTestLocators(locators: Set<string>): Set<string> {
-    const files = new Set<string>();
-       for (const locator of locators) {
-           const file = path.resolve(locator.split(LocatorSeparator)[0])
-           files.add(file)
-       }
-       return files
+        const files = new Set<string>();
+        for (const locator of locators) {
+            if (locator) {
+                const file = path.resolve(locator.split(LocatorSeparator)[0])
+                files.add(file)
+            }
+        }
+        return files
     }
 
     // TODO: Fix blocklist.json generated in nucleus so that the following works recursively instead of string
