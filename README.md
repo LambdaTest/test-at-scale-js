@@ -17,6 +17,7 @@ Monorepo consisting of separate packages for each javascript testing framework m
 ## Contributing
 
 - Clone this monorepo.
+- `npm ci`
 - `npm run bootstrap`
 
 ### Building a subpackage
