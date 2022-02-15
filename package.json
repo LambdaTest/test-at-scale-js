@@ -1,7 +1,6 @@
 {
   "name": "lambdatest",
   "version": "1.0.0",
-  "private": true,
   "devDependencies": {
     "@types/glob": "^7.1.4",
     "@types/node": "^15.14.1",
