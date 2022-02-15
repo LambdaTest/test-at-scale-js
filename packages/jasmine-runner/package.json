@@ -3,7 +3,7 @@
   "version": "0.0.2",
   "description": "Jasmine custom runner",
   "author": "Saurabh Prakash <saurabhp@lambdatest.com>",
-  "homepage": "",
+  "homepage": "https://github.com/LambdaTest/test-at-scale-js#readme",
   "license": "ISC",
   "main": "dist/src/jasmine-runner.js",
   "bin": {
