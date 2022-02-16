@@ -273,11 +273,13 @@ class JasmineRunner implements TestRunner {
                 const locator = Util.getLocator(filename, ancestorTitles, child.description);
                 const blockListed = Util.isBlocklistedLocator(locator)
                 if (testLocators.size > 0) {
-                    if (testLocators.has(locator.toString()) && !blockListed) {
-                        specIdsToRun.push(child.id);
-                    } else if (blockListed) {
-                        // keep list of blacklisted locators, so as to not filter in final results
-                        blockListedTestLocators.add(locator.toString());
+                    if (testLocators.has(locator.toString())) {
+                        if (!blockListed) {
+                            specIdsToRun.push(child.id);
+                        } else {
+                            // keep list of blacklisted locators, so as to not filter in final results
+                            blockListedTestLocators.add(locator.toString());
+                        }
                     }
                 } else if (!blockListed) {
                     specIdsToRun.push(child.id);
