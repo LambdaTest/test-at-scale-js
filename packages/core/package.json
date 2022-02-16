@@ -1,9 +1,9 @@
 {
   "name": "@lambdatest/test-at-scale-core",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "> TODO: description",
   "author": "Saurabh Prakash <saurabhp@lambdatest.com>",
-  "homepage": "",
+  "homepage": "https://github.com/LambdaTest/test-at-scale-js#readme",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,11 +12,8 @@
     "url": "https://github.com/LambdaTest/test-at-scale-js.git",
     "directory": "packages/core"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
-    "build": "npm run clean && npm run compile",
+    "build": "yarn clean && yarn compile",
     "clean": "rimraf dist",
     "compile": "tsc",
     "test": "echo \"Error: run tests from root\" && exit 1"

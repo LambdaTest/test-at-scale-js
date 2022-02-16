@@ -5,3 +5,4 @@ packages/*/dist
 tsconfig.tsbuildinfo
 .nyc_output
 .DS_Store
+yarn-error.log
