@@ -15,11 +15,10 @@
     "directory": "packages/jest-runner"
   },
   "scripts": {
-    "build": "npm run clean && npm run install-peers && npm run compile",
+    "build": "yarn clean && install-peers -f && yarn compile",
     "clean": "rimraf dist",
     "compile": "tsc",
-    "test": "echo \"Error: run tests from root\" && exit 1",
-    "install-peers": "install-peers -f"
+    "test": "echo \"Error: run tests from root\" && exit 1"
   },
   "dependencies": {
     "@lambdatest/test-at-scale-core": "^0.0.3",

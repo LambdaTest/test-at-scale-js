@@ -13,7 +13,7 @@
     "directory": "packages/core"
   },
   "scripts": {
-    "build": "npm run clean && npm run compile",
+    "build": "yarn clean && yarn compile",
     "clean": "rimraf dist",
     "compile": "tsc",
     "test": "echo \"Error: run tests from root\" && exit 1"
