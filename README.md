@@ -14,6 +14,8 @@
 
 </p>
 
+## [Try It!!](https://github.com/LambdaTest/test-at-scale#table-of-contents)
+
 # test-at-scale-js
 
 Custom runners written on top of javascript testing frameworks. For running [Test-at-scale](https://www.lambdatest.com/test-at-scale) locally, follow [this](https://github.com/LambdaTest/test-at-scale).
