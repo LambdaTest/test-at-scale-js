@@ -1,4 +1,21 @@
 
+![LAMBDATEST Logo](http://labs.lambdatest.com/images/fills-copy.svg)
+
+# Test At Scale
+
+![N|Solid](https://www.lambdatest.com/resources/images/TAS_banner.png)
+
+<p align="center">
+  <b>Test Smarter, Release Faster with test-at-scale.</b>
+</p>
+
+<p align="center">
+  <a href="https://github.com/LambdaTest/test-at-scale/tree/master/licenses"><img src="https://img.shields.io/badge/license-PolyForm--Shield--1.0.0-lightgrey"></img></a> <a href="https://discord.gg/Wyf8srhf6K"><img src="https://img.shields.io/badge/Discord-5865F2"></img></a>
+
+</p>
+
+## [Try It!!](https://github.com/LambdaTest/test-at-scale#table-of-contents)
+
 # test-at-scale-js
 
 Custom runners written on top of javascript testing frameworks. For running [Test-at-scale](https://www.lambdatest.com/test-at-scale) locally, follow [this](https://github.com/LambdaTest/test-at-scale).
@@ -17,14 +34,13 @@ Monorepo consisting of separate packages for each javascript testing framework m
 ## Contributing
 
 - Clone this monorepo.
-- `npm ci`
-- `npm run bootstrap`
+- `yarn bootstrap`
 
 ### Building a subpackage
-- `npm run build:mocha`
+- `yarn build:mocha`
 
 ### Build all
-- `npm run build`
+- `yarn build`
 
 ### Adding a dependency in a sub-package
 Use `lerna` [commands](https://github.com/lerna/lerna/tree/main/commands/add#lernaadd).
