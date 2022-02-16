@@ -30,7 +30,7 @@ const exec = util.promisify(child_process.exec);
 export class Util {
     static REPO_ROOT = process.cwd();
 
-    static smartSelectAvailable ?: boolean;
+    static smartSelectAvailable?: boolean;
 
     private static blocklistMap: { [key: string]: { source: string, locator: string }[]; } = {};
     private static blocklistMapInitialized = false;
@@ -80,12 +80,14 @@ export class Util {
                     const relativeFilePath = path.relative(this.REPO_ROOT, k);
                     this.blocklistMap[relativeFilePath] = [];
                     for (const blocklist of data[k]) {
-                        const locator_parts = blocklist.locator.split(LocatorSeparator);
-                        locator_parts[0] = relativeFilePath;
-                        this.blocklistMap[relativeFilePath].push({
-                            source: blocklist.source,
-                            locator: locator_parts.join(LocatorSeparator),
-                        });
+                        if (blocklist.locator) {
+                            const locator_parts = blocklist.locator.split(LocatorSeparator);
+                            locator_parts[0] = relativeFilePath;
+                            this.blocklistMap[relativeFilePath].push({
+                                source: blocklist.source || 'yml',
+                                locator: locator_parts.join(LocatorSeparator),
+                            });
+                        }
                     }
                 }
             }
@@ -259,7 +261,7 @@ export class Util {
                 suiteRelations.set(suite.parentSuiteID, existing);
             }
         }
-        
+
         // Aggregate testCount of all childSuites
         const explored = new Set<ID>();
         function fun(suiteIdToExplore: ID) {
@@ -324,8 +326,8 @@ export class Util {
             await JSONStream.stringify(input, fs.createWriteStream(SMART_INPUT_FILE), JSONStream.replacer);
             await exec(command + ' --inputFile=' + SMART_INPUT_FILE);
             return await JSONStream.parse(fs.createReadStream(SMART_OUT_FILE));
-        // eslint-disable-next-line no-empty
-        } catch (err) {}
+            // eslint-disable-next-line no-empty
+        } catch (err) { }
         return null;
     }
 
