@@ -98,7 +98,7 @@ class JestRunner implements TestRunner {
         return discoveryResult;
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResult[]> {
         Validations.validateExecutionEnv(argv);
         const n = argv.n as number || 1
         const skipTestStats = argv.skipteststats as boolean || false;
@@ -129,14 +129,15 @@ class JestRunner implements TestRunner {
         }
 
 
+        const executionResults: ExecutionResult[] = []
         const testFilesToProcessList = Array.from(testFilesToProcess);
         if (testFilesToProcessList.length == 0) {
-            return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+            executionResults.push(new ExecutionResult(taskID, buildID, repoID, commitID, orgID));
+            return executionResults
         }
+
         const [regex, blockListedLocators] = this.getBlockListedTestAndTestRegex(testFilesToProcessList, testLocators)
-        const executionResults: ExecutionResult[] = [];
-        for (let i=1; i<=n; i++) {
-        
+        for (let i=1; i<=n; i++) {       
             await this.runJest(
                 testFilesToProcessList,
                 regex,
@@ -163,9 +164,9 @@ class JestRunner implements TestRunner {
             }
             executionResults.push(executionResult)
         }
-        const testfilepath = process.env.FLAKY_TEST_RESULT_FILE_PATH as string;
-        await fs.writeFile(testfilepath, JSON.stringify(executionResults));
-        return executionResult;
+        const testfilepath = process.env.TEST_RESULT_FILE_PATH as string;
+        fs.writeFileSync(testfilepath, JSON.stringify(executionResults));
+        return executionResults;
     }
 
     private async runJest(

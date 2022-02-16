@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-empty-function */
+//* eslint-disable @typescript-eslint/no-empty-function */
 
 import glob from "fast-glob";
 import path from "path";
 import crypto from "crypto";
 import parser from "yargs-parser";
 import { hideBin } from "yargs/helpers";
+import fs from "fs";
 
 import {
     DiscoveryResult,
@@ -65,7 +66,7 @@ class JasmineRunner implements TestRunner {
         }
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResult[]> {
         const runTask = new Task<ExecutionResult>();
         const entityIdFilenameMap = new Map<number, string>();
 
@@ -97,16 +98,18 @@ class JasmineRunner implements TestRunner {
             } else {
                 testFilesToProcess = Util.getFilesFromTestLocators(testLocators)
             }
+            const executionResults: ExecutionResult[] = []
             const testFilesToProcessList = Array.from(testFilesToProcess);
             if (testFilesToProcessList.length == 0) {
-                return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+                executionResults.push(new ExecutionResult(taskID, buildID, repoID, commitID, orgID));
+                return executionResults
             }
 
             if (!testFilesToProcessList) {
-                return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+                executionResults.push(new ExecutionResult(taskID, buildID, repoID, commitID, orgID));
+                return executionResults
             }
 
-            const executionResults: ExecutionResult[] = []
             for (let i=1; i<=n; i++) {    
                 const jasmineObj = await this.createJasmineRunner(argv.config);
                 await this.loadSpecs(jasmineObj, testFilesToProcessList, entityIdFilenameMap);
@@ -120,22 +123,23 @@ class JasmineRunner implements TestRunner {
                 const reporter = new CustomReporter(runTask, entityIdFilenameMap);
                 jasmineObj.env.addReporter(reporter);
                 await jasmine.getEnv().execute(specIdsToRun as unknown as jasmine.Suite[]);
-                const executionResults = await runTask.promise;
-                Util.handleDuplicateTests(executionResults.testResults);
+                const executionResult = await runTask.promise;
+                Util.handleDuplicateTests(executionResult.testResults);
                 if (locators.length > 0) {
-                    executionResults.testResults = Util.filterTestResultsByTestLocator(executionResults.testResults,
+                    executionResult.testResults = Util.filterTestResultsByTestLocator(executionResult.testResults,
                         testLocators, blockListedLocators)
-                    if (executionResults.testSuiteResults.length > 0) {
-                        executionResults.testSuiteResults = Util.filterTestSuiteResults(executionResults.testResults,
-                            executionResults.testSuiteResults)
+                    if (executionResult.testSuiteResults.length > 0) {
+                        executionResult.testSuiteResults = Util.filterTestSuiteResults(executionResult.testResults,
+                            executionResult.testSuiteResults)
                     }
                 }
                 if (postTestResultsEndpoint) {
-                    await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
+                    await Util.makeApiRequestPost(postTestResultsEndpoint, executionResult);
                 }
+                executionResults.push(executionResult)
             }
-            const testfilepath = process.env.FLAKY_TEST_RESULT_FILE_PATH as string;     
-            await fs.writeFile(testfilepath, JSON.stringify(executionResults)); 
+            const testfilepath = process.env.TEST_RESULT_FILE_PATH as string;     
+            fs.writeFileSync(testfilepath, JSON.stringify(executionResults)); 
             return executionResults;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {

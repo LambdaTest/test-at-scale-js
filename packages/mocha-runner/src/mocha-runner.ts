@@ -97,10 +97,7 @@ class MochaRunner implements TestRunner {
         return result;
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
-
-        const testRunTask = new Task<void>();
-
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResult[]> {
         Validations.validateExecutionEnv(argv);
         const skipTestStats = argv.skipteststats as boolean || false;
         const n = argv.n as number || 1
@@ -140,6 +137,7 @@ class MochaRunner implements TestRunner {
         (this.mocha as any).cleanReferencesAfterRun(false)
         const executionResults: ExecutionResult[] = []
         for (let i=1; i<=n; i++) {   
+            const testRunTask = new Task<void>();
             const runnerWithResults: CustomRunner = this.mocha.run((failures: number) => {
                 console.error("# of failed tests:", failures);
                 testRunTask.resolve();
@@ -166,10 +164,10 @@ class MochaRunner implements TestRunner {
             }
             executionResults.push(results)
         }
-        const testfilepath = process.env.FLAKY_TEST_RESULT_FILE_PATH as string; 
+        const testfilepath = process.env.TEST_RESULT_FILE_PATH as string; 
         fs.writeFileSync(testfilepath, JSON.stringify(executionResults)); 
         this.mocha.dispose();
-        return results;
+        return executionResults;
     }
 
     private listTestsAndTestSuites(
