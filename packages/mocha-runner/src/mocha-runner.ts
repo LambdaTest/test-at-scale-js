@@ -241,20 +241,28 @@ class MochaRunner implements TestRunner {
                 MochaHelper.getParentSuites(test, parentSuites);
                 parentSuites.reverse();
                 const locator = Util.getLocator(filename, parentSuites, test.title ?? "");
-                if (Util.isBlocklistedLocator(locator)) {
-                    const testResult = MochaHelper.transformMochaTestAsTestResult(
-                        test,
-                        new Date(),
-                        TestStatus.BlockListed
-                    );
-                    this._blockListedLocators.add(testResult.locator.toString());
-                    this._blocklistedTests.push(testResult);
-                } else {
-                    if (this._testlocator.size > 0) {
-                        // if locators exist then only add in filter tests.
-                        if (this._testlocator.has(locator.toString())) {
+                const blockListed = Util.isBlocklistedLocator(locator);
+                const testResult = MochaHelper.transformMochaTestAsTestResult(
+                    test,
+                    new Date(),
+                    TestStatus.BlockListed
+                );
+                if (this._testlocator.size > 0) {
+                    // if locators exist and not blocklisted then only add in filter tests.
+                    if (this._testlocator.has(locator.toString())) {
+                        if (!blockListed) {
                             filteredTests.push(test);
+                        } else {
+                            this._blockListedLocators.add(testResult.locator.toString());
+                            this._blocklistedTests.push(testResult);
                         }
+                    }
+                } else {
+                    // if no test locators specified, then we will execute all 
+                    // and filter out blocklisted ones
+                    if (blockListed) {
+                        this._blockListedLocators.add(testResult.locator.toString());
+                        this._blocklistedTests.push(testResult);
                     } else {
                         filteredTests.push(test);
                     }
