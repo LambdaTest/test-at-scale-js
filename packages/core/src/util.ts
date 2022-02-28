@@ -15,6 +15,7 @@ import {
     TestResult,
     TestsDependenciesMap,
     TestSuiteResult,
+    TestStatus,
     TestSuite
 } from './model';
 import {
@@ -106,6 +107,19 @@ export class Util {
         }
         return files
     }
+
+    static getTestStatus(status: string): TestStatus{
+        switch (status){
+            case TestStatus.Passed:
+                return TestStatus.Passed
+            case TestStatus.Failed:
+                return TestStatus.Failed
+            case TestStatus.BlockListed:
+                return TestStatus.BlockListed
+            default:
+                return TestStatus.Skipped
+        }
+    }  
 
     // TODO: Fix blocklist.json generated in nucleus so that the following works recursively instead of string
     static getBlocklistedSource(locator: Locator): string | null {
