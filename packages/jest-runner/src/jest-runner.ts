@@ -101,7 +101,6 @@ class JestRunner implements TestRunner {
         return discoveryResult;
     }
 
-
     async execute(testFilesGlob: string| string[], cleanup: string, locators: string[]=[]): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators);
         
