@@ -7,7 +7,7 @@ import axios, { AxiosError } from 'axios';
 import { JSONStream } from './json-utils';
 import {
     DiscoveryResult,
-    ExecutionResult,
+    ExecutionResults,
     ID,
     Locator,
     Test,
@@ -150,7 +150,7 @@ export class Util {
         return !!blocklistedLocators.find((item) => { return Locator.from(item.locator)?.liesCompletelyIn(locator); });
     }
 
-    static async makeApiRequestPost(url: string, data: DiscoveryResult | ExecutionResult): Promise<void> {
+    static async makeApiRequestPost(url: string, data: DiscoveryResult | ExecutionResults): Promise<void> {
         try {
             await axios.post(url, data, {
                 timeout: DEFAULT_API_TIMEOUT,

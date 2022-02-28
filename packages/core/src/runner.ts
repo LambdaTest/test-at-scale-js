@@ -1,6 +1,6 @@
 import {
     DiscoveryResult,
-    ExecutionResult,
+    ExecutionResults,
 } from "./model";
 import parser from "yargs-parser";
 
@@ -10,5 +10,5 @@ declare global {
 }
 export interface TestRunner {
     discoverTests(argv: parser.Arguments): Promise<DiscoveryResult>;
-    executeTests(argv: parser.Arguments): Promise<ExecutionResult>;
+    executeTests(argv: parser.Arguments): Promise<ExecutionResults>;
 }

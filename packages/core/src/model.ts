@@ -236,6 +236,11 @@ export enum TestStatus {
     BlockListed = 'blocklisted'
 }
 
+export enum TestExecutionMode {
+    Combined = 'combined',
+    Individual = 'individual'
+}
+
 export class TestSuiteResult extends TestSuite {
     duration: number;
     status: TestStatus;
@@ -336,7 +341,7 @@ export class ChildProcMessage {
 }
 
 export type TestsDependenciesMap = Map<string, Set<string>>;
-
+export type ExResultMap = Map<string, Array<ExecutionResult>>;
 export class TestDependencies {
     testFile: string;
     dependsOn: string[];
@@ -351,5 +356,18 @@ export class RunnerException extends Error {
         if (msg) {
             super(msg);
         }
+    }
+}
+
+export class ExecutionResults {
+    results: ExecutionResult[];
+    constructor() {
+        this.results = []
+    }
+    push(executionResult: ExecutionResult) {
+        this.results.push(executionResult)
+    }
+    pop() {
+        this.results.pop()
     }
 }

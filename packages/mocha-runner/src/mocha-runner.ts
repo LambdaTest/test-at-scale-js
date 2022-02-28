@@ -11,6 +11,7 @@ import Mocha from "mocha";
 import {
     DiscoveryResult,
     ExecutionResult,
+    ExecutionResults,
     ID,
     RunnerException,
     Task,
@@ -21,7 +22,8 @@ import {
     TestSuite,
     TestSuiteResult,
     Util,
-    Validations
+    Validations,
+    TestExecutionMode,
 } from "@lambdatest/test-at-scale-core";
 import { CustomRunner, MochaHelper } from "./helper";
 
@@ -97,26 +99,14 @@ class MochaRunner implements TestRunner {
         return result;
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
-
-        const testRunTask = new Task<void>();
-
-        Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+    async execute(testFilesGlob: string | string[], locators: string[]): Promise<ExecutionResult> {
         const taskID = process.env.TASK_ID as ID;
         const buildID = process.env.BUILD_ID as ID;
         const orgID = process.env.ORG_ID as ID;
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
-        const testFilesGlob = argv.pattern as string | string[];
-        const locatorFile = argv.locatorFile as string;
-        let locators;
-        if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile);
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
-        }
-
+        const testRunTask = new Task<void>();
+        
         this._testlocator = new Set<string>(locators);
 
         this.extendNativeRunner();
@@ -156,10 +146,46 @@ class MochaRunner implements TestRunner {
             results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
                 this._testlocator, this._blockListedLocators)
         }
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, results);
-        }
         return results;
+    }
+
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        Validations.validateExecutionEnv(argv);
+        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+        const testFilesGlob = argv.pattern as string | string[];
+        const locatorFile = argv.locatorFile as string;
+        const n = argv.n as number || 1
+        const mode = argv.mode as string ||  TestExecutionMode.Combined
+        let locators;
+        if (locatorFile) {
+            locators = Util.getLocatorsFromFile(locatorFile)
+        } else {
+            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
+        }
+        (this.mocha as any).cleanReferencesAfterRun(false)
+        const executionResults = new ExecutionResults()
+
+        // execute tests in a group
+        if (mode == TestExecutionMode.Combined) {
+            for (let i=1; i<=n; i++) {
+                const result = await this.execute(testFilesGlob, locators)
+                executionResults.push(result)
+            }
+        } else {
+            // execute each test n consecutive times individually
+            for (const locator of locators) {
+                for (let i=1; i<=n; i++) {
+                    const result = await this.execute(testFilesGlob, locator)
+                    executionResults.push(result)
+                }
+            }
+        }
+
+        if (postTestResultsEndpoint) {
+            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
+        }
+        this.mocha.dispose()
+        return executionResults;
     }
 
     private listTestsAndTestSuites(

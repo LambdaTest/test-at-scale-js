@@ -13,6 +13,7 @@ import { hideBin } from "yargs/helpers";
 import {
     DiscoveryResult,
     ExecutionResult,
+    ExecutionResults,
     ID,
     JSONStream,
     LocatorSeparator,
@@ -24,7 +25,8 @@ import {
     TestsDependenciesMap,
     TestSuite,
     Util,
-    Validations
+    Validations,
+    TestExecutionMode
 } from "@lambdatest/test-at-scale-core";
 import {
     DISCOVERY_RESULT_FILE,
@@ -99,23 +101,13 @@ class JestRunner implements TestRunner {
         return discoveryResult;
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
-        Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+
+    async execute(testFilesGlob: string| string[], locators: string[], cleanup: string): Promise<ExecutionResult> {
         const taskID = process.env.TASK_ID as ID;
         const buildID = process.env.BUILD_ID as ID;
         const orgID = process.env.ORG_ID as ID;
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
-        const testFilesGlob = argv.pattern as string | string[];
-        const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
-        const locatorFile = argv.locatorFile as string;
-        let locators
-        if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile)
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
-        }
         const testLocators = new Set<string>(locators);
 
         let testFilesToProcess: Set<string> = new Set();
@@ -154,12 +146,44 @@ class JestRunner implements TestRunner {
                     executionResult.testSuiteResults)
             }
         }
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResult);
+        return executionResult;
+    }
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        Validations.validateExecutionEnv(argv);
+        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+        const testFilesGlob = argv.pattern as string | string[];
+        const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
+        const locatorFile = argv.locatorFile as string;
+        const n = argv.n as number || 1
+        const mode = argv.mode as string ||  TestExecutionMode.Combined
+        let locators
+        if (locatorFile) {
+            locators = Util.getLocatorsFromFile(locatorFile)
+        } else {
+            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
+        }
+        const executionResults = new ExecutionResults()
 
+        // execute tests in a group
+        if (mode == TestExecutionMode.Combined) {
+            for (let i=1; i<=n; i++) {
+                const result = await this.execute(testFilesGlob, locators, cleanup)
+                executionResults.push(result)
+            }
+        } else {
+            // execute each test n consecutive times individually
+            for (const locator of locators) {
+                for (let i=1; i<=n; i++) {
+                    const result = await this.execute(testFilesGlob, locator, cleanup)
+                    executionResults.push(result)
+                }
+            }
         }
 
-        return executionResult;
+        if (postTestResultsEndpoint) {
+            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
+        }
+        return executionResults;
     }
 
     private async runJest(
