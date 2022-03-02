@@ -305,7 +305,7 @@ export class Util {
         includeSelf = false,
         config?: unknown,
     ): Promise<TestDependencies | null> {
-        return await this.execSmartMod({
+        return await this.execSmartMode({
             "function": "listDependency",
             "testFile": testFile,
             "rootDir": rootDir,
@@ -315,7 +315,7 @@ export class Util {
     }
 
     static async listDependencies(testFiles: string[]): Promise<TestsDependenciesMap | null> {
-        const testsDeps = await this.execSmartMod({
+        const testsDeps = await this.execSmartMode({
             "function": "listDependencies",
             "testFiles": testFiles
         });
@@ -330,7 +330,7 @@ export class Util {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private static async execSmartMod(input: any): Promise<any> {
+    private static async execSmartMode(input: any): Promise<any> {
         const command = process.env.SMART_BINARY as string;
         if (!this.isSmartSelectAvailable()) {
             return null;
@@ -341,7 +341,9 @@ export class Util {
             await exec(command + ' --inputFile=' + SMART_INPUT_FILE);
             return await JSONStream.parse(fs.createReadStream(SMART_OUT_FILE));
             // eslint-disable-next-line no-empty
-        } catch (err) { }
+        } catch (err) { 
+            console.error('error while running smart selection mode', err)
+        }
         return null;
     }
 
