@@ -16,7 +16,8 @@ export class MochaHelper {
     static transformMochaTestAsTestResult(
         test: Mocha.Test,
         specStartTime: Date,
-        state: TestStatus
+        state: TestStatus,
+        failureMessage?: string,
     ): TestResult {
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
@@ -50,7 +51,8 @@ export class MochaHelper {
             state,
             !!blocklistSource,
             blocklistSource,
-            specStartTime
+            specStartTime,
+            failureMessage ? failureMessage: null,
         );
     }
 

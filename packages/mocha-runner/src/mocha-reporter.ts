@@ -104,10 +104,12 @@ class MochaReporter extends Mocha.reporters.Base {
             }
         });
 
-        runner.on(EVENT_TEST_FAIL, (test: Mocha.Test) => {
+        runner.on(EVENT_TEST_FAIL, (test: Mocha.Test, err: Error) => {
             try {
+                const failureMessage = (err.message || err.stack) ?? 'unknown error';
                 this._testResults.push(
-                    MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Failed));
+                    MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, 
+                        TestStatus.Failed, failureMessage));
             } catch (err) {
                 console.error(MochaReporter.RUNNER_ERROR, err);
             }
