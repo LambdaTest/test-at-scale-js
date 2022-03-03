@@ -250,6 +250,38 @@ export class Util {
         return locatorSet
     }
 
+
+    static getLocatorsConfigFromFile(filePath: string): InputConfig {
+        const config = JSON.parse(fs.readFileSync(filePath).toString());             
+        return config
+    }
+
+    static createLocatorSet(config: InputConfig): LocatorSet[] {
+        const locatorSet: LocatorSet[] = []
+        const locatorMap: Map<number, string[]> = new  Map<number, string[]>() 
+        switch(config.mode) {
+        case TestExecutionMode.Individual:
+            for (const locator of config.locators) {
+                locatorSet.push(new LocatorSet(locator.n, [locator.locator]))
+            }
+            break;
+        case TestExecutionMode.Combined:    
+            for (const locator of config.locators) {
+                let record = locatorMap.get(locator.n)
+                if (record == undefined) {
+                    record = []
+                }
+                record.push(locator.locator)
+                locatorMap.set(locator.n,record)    
+            }
+            for(const [n, locators] of locatorMap){
+                locatorSet.push(new LocatorSet(n, locators))
+            }
+            break;
+        }
+        return locatorSet
+    }
+
     static handleDuplicateTests(tests: Test[]): void {
         const testIdsCollisionMap: Map<string, number> = new Map<string, number>();
         tests.forEach(test => {

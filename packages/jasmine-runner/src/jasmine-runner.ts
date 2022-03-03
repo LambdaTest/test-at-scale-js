@@ -19,7 +19,6 @@ import {
     Validations,
     Task,
     InputConfig,
-    TestExecutionMode
 } from "@lambdatest/test-at-scale-core";
 import Jasmine from "jasmine";
 import { CustomReporter } from "./jasmine-reporter";
@@ -130,40 +129,38 @@ class JasmineRunner implements TestRunner {
 
     }
     async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        const taskID = process.env.TASK_ID as ID;
+        const buildID = process.env.BUILD_ID as ID;
+        const orgID = process.env.ORG_ID as ID;
+        const repoID = process.env.REPO_ID as ID;
+        const commitID = process.env.COMMIT_ID as ID;
         Validations.validateExecutionEnv(argv);
         const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
-        const n = argv.n as number || 1
-        const mode = argv.mode as string ||  TestExecutionMode.Combined
-        let locators;
+        let locators: InputConfig = new InputConfig();
         if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile);
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
         }
-        const executionResults = new ExecutionResults()
-        // execute tests in a group
-        if (mode == TestExecutionMode.Combined) {
-            for (let i=1; i<=n; i++) {
-                const result = await this.execute(testFilesGlob, locators, argv.config)
+        const executionResults = new ExecutionResults(
+            taskID,
+            buildID,
+            repoID,
+            commitID,
+            orgID,
+            []
+        );
+        const locatorSet = Util.createLocatorSet(locators)
+        for (const set of locatorSet) {
+            for (let i=1; i<=set.n; i++) {
+                const result = await this.execute(testFilesGlob, set.locators, argv.config)
                 executionResults.push(result)
             }
-        } else {
-            // execute each test n consecutive times individually
-            for (const locator of locators) {
-                for (let i=1; i<=n; i++) {
-                    const result = await this.execute(testFilesGlob, locator, argv.config)
-                    executionResults.push(result)
-                }
-            }
         }
-        
         if (postTestResultsEndpoint) {
             await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }
-        return executionResults;
-        
+        return executionResults;   
     }
 
     async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
