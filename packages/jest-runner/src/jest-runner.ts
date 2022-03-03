@@ -211,8 +211,8 @@ class JestRunner implements TestRunner {
 
                 if (parts.length > 0) {
                     const testFullName = parts.join(" ");
-                    // testRegex = (^(testSuite1 testSuite2 testName$)
-                    const testRegex = "^(" + Util.escapeRegExp(testFullName) + "$)";
+                    // testRegex = (^testSuite1 testSuite2 testName$)
+                    const testRegex = "(^" + Util.escapeRegExp(testFullName) + "$)";
                     if (!blockListed) {
                         filteredTestsRegexes.push(testRegex);
                     } else {
@@ -224,8 +224,8 @@ class JestRunner implements TestRunner {
             if (filteredTestsRegexes.length == 0) {
                 return [MATCH_NOTHING_REGEX, blockListedTestLocators];
             }
-            // ^((^testSuite1 testSuite2 testName$)|(^testSuite3 testSuite4 testName2$)).*$
-            return ["^(" + filteredTestsRegexes.join("|") + ").*$", blockListedTestLocators];
+            // (^testSuite1 testSuite2 testName$)|(^testSuite3 testSuite4 testName2$)
+            return [filteredTestsRegexes.join("|"), blockListedTestLocators];
         }
         // in case no test locators specified we will execute all tests 
         // but first filter out blockListed ones
@@ -240,8 +240,8 @@ class JestRunner implements TestRunner {
                 parts.shift();
                 if (parts.length > 0) {
                     const testFullName = parts.join(" ");
-                    // testRegex = (?!(^testSuite1 testSuite2 testName$)
-                    const testRegex = "^(" + Util.escapeRegExp(testFullName) + "$)";
+                    // testRegex = (^testSuite1 testSuite2 testName)
+                    const testRegex = "(^" + Util.escapeRegExp(testFullName) + ")";
                     blockListedTestsRegexes.push(testRegex);
                 }
             }
