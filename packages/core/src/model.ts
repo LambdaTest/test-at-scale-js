@@ -283,41 +283,21 @@ export class TestSuiteResult extends TestSuite {
 }
 
 export class ExecutionResult {
-    taskID: ID;
-    buildID: ID;
-    repoID: ID;
-    commitID: ID;
-    orgID: ID;
     testResults: TestResult[];
     testSuiteResults: TestSuiteResult[];
 
     constructor(
-        taskID: ID,
-        buildID: ID,
-        repoID: ID,
-        commitID: ID,
-        orgID: ID,
         testResults: TestResult[] = [],
         testSuiteResults: TestSuiteResult[] = []
     ) {
-        this.taskID = taskID;
-        this.buildID = buildID;
-        this.repoID = repoID;
-        this.orgID = orgID;
         this.testResults = testResults;
         this.testSuiteResults = testSuiteResults;
-        this.commitID = commitID
     }
 
     static fromJSON(jsonResult: any): ExecutionResult {
         const testResults = (jsonResult.testResults ?? []).map(TestResult.fromJSON);
         const testSuiteResults = (jsonResult.testSuiteResults ?? []).map(TestSuiteResult.fromJSON);
         return new ExecutionResult(
-            jsonResult.taskID,
-            jsonResult.buildID,
-            jsonResult.repoID,
-            jsonResult.commitID,
-            jsonResult.orgID,
             testResults,
             testSuiteResults
         );
@@ -360,14 +340,53 @@ export class RunnerException extends Error {
 }
 
 export class ExecutionResults {
+    taskID: ID;
+    buildID: ID;
+    repoID: ID;
+    commitID: ID;
+    orgID: ID;
     results: ExecutionResult[];
-    constructor() {
-        this.results = []
+    constructor(taskID: ID,
+        buildID: ID,
+        repoID: ID,
+        commitID: ID,
+        orgID: ID,
+        results: ExecutionResult[] = [],
+        ) {
+        this.taskID = taskID;
+        this.buildID = buildID;
+        this.repoID = repoID;
+        this.orgID = orgID;
+        this.commitID = commitID;
+        this.results = results;
     }
     push(executionResult: ExecutionResult) {
         this.results.push(executionResult)
     }
     pop() {
         this.results.pop()
+    }
+}
+
+export type LocatorConfig = {
+    locator: string
+    n: number   
+}
+
+export class InputConfig {
+    mode: string
+    locators:LocatorConfig[]
+    constructor() {
+        this.mode = TestExecutionMode.Combined
+        this.locators = []
+    }
+}
+
+export class LocatorSet {
+    n:number
+    locators: string[]
+    constructor(n:number, locators: string[]) {
+        this.locators = locators
+        this.n = n
     }
 }

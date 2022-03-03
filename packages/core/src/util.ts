@@ -16,7 +16,10 @@ import {
     TestsDependenciesMap,
     TestSuiteResult,
     TestStatus,
-    TestSuite
+    TestSuite,
+    InputConfig,
+    TestExecutionMode,
+    LocatorSet
 } from './model';
 import {
     DEFAULT_API_TIMEOUT,
@@ -25,7 +28,6 @@ import {
     SMART_OUT_FILE,
     TASLocatorSeparator
 } from './constants';
-
 const exec = util.promisify(child_process.exec);
 
 export class Util {
@@ -206,6 +208,38 @@ export class Util {
     static getLocatorsFromFile(filePath: string): Array<string> {
         const locators = fs.readFileSync(filePath).toString().split(TASLocatorSeparator)
         return locators
+    }
+
+
+    static getLocatorsConfigFromFile(filePath: string): InputConfig {
+        const config = JSON.parse(fs.readFileSync(filePath).toString());             
+        return config
+    }
+
+    static createLocatorSet(config: InputConfig): LocatorSet[] {
+        const locatorSet: LocatorSet[] = []
+        const locatorMap: Map<number, string[]> = new  Map<number, string[]>() 
+        switch(config.mode) {
+        case TestExecutionMode.Individual:
+            for (const locator of config.locators) {
+                locatorSet.push(new LocatorSet(locator.n, [locator.locator]))
+            }
+            break;
+        case TestExecutionMode.Combined:    
+            for (const locator of config.locators) {
+                let record = locatorMap.get(locator.n)
+                if (record == undefined) {
+                    record = []
+                }
+                record.push(locator.locator)
+                locatorMap.set(locator.n,record)    
+            }
+            for(const [n, locators] of locatorMap){
+                locatorSet.push(new LocatorSet(n, locators))
+            }
+            break;
+        }
+        return locatorSet
     }
 
     static handleDuplicateTests(tests: Test[]): void {

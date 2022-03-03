@@ -26,10 +26,7 @@ export class CustomReporter implements jasmine.CustomReporter {
 
     private repoID = process.env.REPO_ID as ID;
     private commitID = process.env.COMMIT_ID as ID;
-    private taskID = process.env.TASK_ID as ID;
-    private buildID = process.env.BUILD_ID as ID;
-    private orgID = process.env.ORG_ID as ID;
-    private executionResults = new ExecutionResult(this.taskID, this.buildID, this.repoID, this.commitID, this.orgID);
+    private executionResults = new ExecutionResult();
 
     constructor(runTask: Task<ExecutionResult>, entityIdFilenameMap: Map<number | string, string>) {
         this._runTask = runTask;

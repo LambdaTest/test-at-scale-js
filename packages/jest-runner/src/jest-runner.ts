@@ -26,7 +26,7 @@ import {
     TestSuite,
     Util,
     Validations,
-    TestExecutionMode
+    InputConfig
 } from "@lambdatest/test-at-scale-core";
 import {
     DISCOVERY_RESULT_FILE,
@@ -103,13 +103,8 @@ class JestRunner implements TestRunner {
 
 
     async execute(testFilesGlob: string| string[], locators: string[], cleanup: string): Promise<ExecutionResult> {
-        const taskID = process.env.TASK_ID as ID;
-        const buildID = process.env.BUILD_ID as ID;
-        const orgID = process.env.ORG_ID as ID;
-        const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
         const testLocators = new Set<string>(locators);
-
+        
         let testFilesToProcess: Set<string> = new Set();
 
         if (testLocators.size == 0) {
@@ -122,7 +117,7 @@ class JestRunner implements TestRunner {
 
         const testFilesToProcessList = Array.from(testFilesToProcess);
         if (testFilesToProcessList.length == 0) {
-            return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+            return new ExecutionResult();
         }
         const [regex, blockListedLocators] = this.getBlockListedTestAndTestRegex(testFilesToProcessList, testLocators)
 
@@ -149,37 +144,35 @@ class JestRunner implements TestRunner {
         return executionResult;
     }
     async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        const taskID = process.env.TASK_ID as ID;
+        const buildID = process.env.BUILD_ID as ID;
+        const orgID = process.env.ORG_ID as ID;
+        const repoID = process.env.REPO_ID as ID;
+        const commitID = process.env.COMMIT_ID as ID;
         Validations.validateExecutionEnv(argv);
         const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
         const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
         const locatorFile = argv.locatorFile as string;
-        const n = argv.n as number || 1
-        const mode = argv.mode as string ||  TestExecutionMode.Combined
-        let locators
+        let locators: InputConfig = new InputConfig();
         if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile)
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
         }
-        const executionResults = new ExecutionResults()
+        const executionResults = new ExecutionResults(
+            taskID,
+            buildID,
+            repoID,
+            commitID,
+            orgID,
+        );
+        const locatorSet = Util.createLocatorSet(locators)
 
-        // execute tests in a group
-        if (mode == TestExecutionMode.Combined) {
-            for (let i=1; i<=n; i++) {
-                const result = await this.execute(testFilesGlob, locators, cleanup)
+        for (const set of locatorSet) {
+            for (let i=1; i<=set.n; i++) {
+                const result = await this.execute(testFilesGlob, set.locators, cleanup)
                 executionResults.push(result)
             }
-        } else {
-            // execute each test n consecutive times individually
-            for (const locator of locators) {
-                for (let i=1; i<=n; i++) {
-                    const result = await this.execute(testFilesGlob, locator, cleanup)
-                    executionResults.push(result)
-                }
-            }
-        }
-
+        } 
         if (postTestResultsEndpoint) {
             await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }

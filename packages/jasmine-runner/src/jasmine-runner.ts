@@ -18,7 +18,7 @@ import {
     Util,
     Validations,
     Task,
-    TestExecutionMode
+    InputConfig
 } from "@lambdatest/test-at-scale-core";
 import Jasmine from "jasmine";
 import { CustomReporter } from "./jasmine-reporter";
@@ -67,15 +67,10 @@ class JasmineRunner implements TestRunner {
     }
 
     async execute(testFilesGlob: string|string[], locators: string[], config: string): Promise<ExecutionResult>   {
-        const taskID = process.env.TASK_ID as ID;
-        const buildID = process.env.BUILD_ID as ID;
-        const orgID = process.env.ORG_ID as ID;
-        const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
         const testLocators = new Set<string>(locators)
         const blockListedLocators = new Set<string>()
-        const runTask = new Task<ExecutionResult>();
         const entityIdFilenameMap = new Map<number, string>();
+        const runTask = new Task<ExecutionResult>();
 
         try {
             let testFilesToProcess: Set<string> = new Set();
@@ -88,24 +83,28 @@ class JasmineRunner implements TestRunner {
             }
             const testFilesToProcessList = Array.from(testFilesToProcess);
             if (testFilesToProcessList.length == 0) {
-                return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+                return new ExecutionResult();
             }
 
             if (!testFilesToProcessList) {
-                return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+                return new ExecutionResult();
             }
-
+           
             const jasmineObj = await this.createJasmineRunner(config);
+
             await this.loadSpecs(jasmineObj, testFilesToProcessList, entityIdFilenameMap);
+            const rootSuite = jasmineObj.env.topSuite();
             const specIdsToRun: number[] = [];
-            this.fetchSpecIdsToRun(jasmine.getEnv().topSuite(), specIdsToRun, entityIdFilenameMap,
+          
+            this.fetchSpecIdsToRun(rootSuite, specIdsToRun, entityIdFilenameMap,
                 testLocators, blockListedLocators);
-            if (specIdsToRun.length == 0) {
+            
+                if (specIdsToRun.length == 0) {
                 // pushing an invalid specID because if we pass empty array, it runs all specs
                 specIdsToRun.push(-1);
             }
             const reporter = new CustomReporter(runTask, entityIdFilenameMap);
-            jasmineObj.env.addReporter(reporter);
+            jasmine.getEnv().addReporter(reporter);
             await jasmine.getEnv().execute(specIdsToRun as unknown as jasmine.Suite[]);
             const executionResult = await runTask.promise;
             Util.handleDuplicateTests(executionResult.testResults);
@@ -117,6 +116,16 @@ class JasmineRunner implements TestRunner {
                         executionResult.testSuiteResults)
                 }
             }
+
+            
+            for (const spec of testFilesToProcessList) 
+            {
+                //if (path.includes(spec) )
+                {
+                    console.log("Clearing spec from require cache: " + spec);
+                    delete require.cache[spec];
+                }
+            }
             return executionResult;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
@@ -125,40 +134,38 @@ class JasmineRunner implements TestRunner {
 
     }
     async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        const taskID = process.env.TASK_ID as ID;
+        const buildID = process.env.BUILD_ID as ID;
+        const orgID = process.env.ORG_ID as ID;
+        const repoID = process.env.REPO_ID as ID;
+        const commitID = process.env.COMMIT_ID as ID;
         Validations.validateExecutionEnv(argv);
         const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
-        const n = argv.n as number || 1
-        const mode = argv.mode as string ||  TestExecutionMode.Combined
-        let locators;
+        let locators: InputConfig = new InputConfig();
         if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile);
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
         }
-        const executionResults = new ExecutionResults()
-        // execute tests in a group
-        if (mode == TestExecutionMode.Combined) {
-            for (let i=1; i<=n; i++) {
-                const result = await this.execute(testFilesGlob, locators, argv.config)
+        const executionResults = new ExecutionResults(
+            taskID,
+            buildID,
+            repoID,
+            commitID,
+            orgID,
+            []
+        );
+        const locatorSet = Util.createLocatorSet(locators)
+        for (const set of locatorSet) {
+            for (let i=1; i<=set.n; i++) {
+                const result = await this.execute(testFilesGlob, set.locators, argv.config)
                 executionResults.push(result)
             }
-        } else {
-            // execute each test n consecutive times individually
-            for (const locator of locators) {
-                for (let i=1; i<=n; i++) {
-                    const result = await this.execute(testFilesGlob, locator, argv.config)
-                    executionResults.push(result)
-                }
-            }
         }
-        
         if (postTestResultsEndpoint) {
             await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }
-        return executionResults;
-        
+        return executionResults;   
     }
 
     private async createJasmineRunner(jasmineConfigFile: string | undefined): Promise<Jasmine> {
@@ -179,7 +186,7 @@ class JasmineRunner implements TestRunner {
             jasmineObj.loadConfig(config);
             await jasmineObj.loadHelpers();
         }
-
+        
         jasmineObj.env.clearReporters();
         jasmineObj.randomizeTests(false);
         return jasmineObj;
