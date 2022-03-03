@@ -233,7 +233,6 @@ export enum TestStatus {
     Passed = 'passed',
     Failed = 'failed',
     Skipped = 'skipped',
-    Disabled = 'disabled',
     BlockListed = 'blocklisted'
 }
 

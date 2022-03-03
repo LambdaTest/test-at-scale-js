@@ -99,11 +99,9 @@ export class CustomReporter implements jasmine.CustomReporter {
         if (blocklistSource) {
             result.status = TestStatus.BlockListed;
         }
-        // marking tests as skipped
-        if (result.status === 'disabled' || result.status === 'pending' || result.status === 'excluded') {
-            result.status = TestStatus.Skipped;
-        }
-
+        // get test status
+        result.status = Util.getTestStatus(result.status)
+        
         const duration: number = result.duration ?? ((new Date()).getTime() - this.specStartTime.getTime())
         const test = new TestResult(
             crypto

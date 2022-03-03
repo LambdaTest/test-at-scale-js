@@ -55,7 +55,7 @@ class JestReporter {
             if (Util.isBlocklistedLocator(locator)) {
                 this.testResults.push(this.toTASTestResult(jestTestResult, TASTestStatus.BlockListed));
             } else {
-                this.testResults.push(this.toTASTestResult(jestTestResult, jestTestResult.status as TASTestStatus));
+                this.testResults.push(this.toTASTestResult(jestTestResult, Util.getTestStatus(jestTestResult.status)));
             }
         });
 

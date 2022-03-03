@@ -173,7 +173,6 @@ class JestRunner implements TestRunner {
         const jestArgv: Config.Argv = {
             $0: "jest-runner",
             _: testFilesToProcessList,
-            ci: true,
             runInBand: true,
             testNamePattern: testNamePattern,
             useStderr: true,
