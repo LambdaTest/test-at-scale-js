@@ -151,7 +151,7 @@ class JasmineRunner implements TestRunner {
             locators = Util.getLocatorsConfigFromFile(locatorFile)
             const locatorSet = Util.createLocatorSet(locators)
             for (const set of locatorSet) {
-                for (let i=1; i<=set.n; i++) {
+                for (let i=1; i<=set.numberofexecutions; i++) {
                     const result = await this.execute(testFilesGlob, argv.config, set.locators)
                     executionResults.push(result)
                 }

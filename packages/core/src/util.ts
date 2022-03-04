@@ -249,11 +249,10 @@ export class Util {
         }
         return locatorSet
     }
-
-
     static getLocatorsConfigFromFile(filePath: string): InputConfig {
-        const config = JSON.parse(fs.readFileSync(filePath).toString());             
-        return config
+        const inputConfig = JSON.parse(fs.readFileSync(filePath).toString());
+        this.validateLocatorConfig(inputConfig)
+        return inputConfig
     }
 
     static createLocatorSet(config: InputConfig): LocatorSet[] {
@@ -262,14 +261,14 @@ export class Util {
         switch(config.mode) {
         case TestExecutionMode.Individual:
             for (const locator of config.locators) {
-                locatorSet.push(new LocatorSet(locator.n, [locator.locator]))
+                locatorSet.push(new LocatorSet(locator.numberofexecutions, [locator.locator]))
             }
             break;
         case TestExecutionMode.Combined:    
             for (const locator of config.locators) {
-                let record = locatorMap.get(locator.n) ?? [];
+                let record = locatorMap.get(locator.numberofexecutions) ?? [];
                 record.push(locator.locator)
-                locatorMap.set(locator.n,record)    
+                locatorMap.set(locator.numberofexecutions,record)    
             }
             for(const [n, locators] of locatorMap){
                 locatorSet.push(new LocatorSet(n, locators))
