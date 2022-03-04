@@ -321,7 +321,6 @@ export class ChildProcMessage {
 }
 
 export type TestsDependenciesMap = Map<string, Set<string>>;
-export type ExResultMap = Map<string, Array<ExecutionResult>>;
 export class TestDependencies {
     testFile: string;
     dependsOn: string[];
