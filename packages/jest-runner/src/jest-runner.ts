@@ -102,7 +102,7 @@ class JestRunner implements TestRunner {
     }
 
 
-    async execute(testFilesGlob: string| string[], locators: string[], cleanup: string): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string| string[], cleanup: string, locators: string[]=[]): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators);
         
         let testFilesToProcess: Set<string> = new Set();
@@ -155,9 +155,6 @@ class JestRunner implements TestRunner {
         const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
         const locatorFile = argv.locatorFile as string;
         let locators: InputConfig = new InputConfig();
-        if (locatorFile) {
-            locators = Util.getLocatorsConfigFromFile(locatorFile)
-        }
         const executionResults = new ExecutionResults(
             taskID,
             buildID,
@@ -165,13 +162,19 @@ class JestRunner implements TestRunner {
             commitID,
             orgID,
         );
-        const locatorSet = Util.createLocatorSet(locators)
-
-        for (const set of locatorSet) {
-            for (let i=1; i<=set.n; i++) {
-                const result = await this.execute(testFilesGlob, set.locators, cleanup)
-                executionResults.push(result)
+        if (locatorFile) {
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
+            const locatorSet = Util.createLocatorSet(locators)
+            for (const set of locatorSet) {
+                for (let i=1; i<=set.n; i++) {
+                    const result = await this.execute(testFilesGlob, cleanup, set.locators)
+                    executionResults.push(result)
+                }
             }
+        } else {
+            // run all tests if locator file is not present
+            const result = await this.execute(testFilesGlob, cleanup)
+            executionResults.push(result)
         } 
         if (postTestResultsEndpoint) {
             await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
