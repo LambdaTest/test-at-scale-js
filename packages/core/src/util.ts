@@ -267,10 +267,7 @@ export class Util {
             break;
         case TestExecutionMode.Combined:    
             for (const locator of config.locators) {
-                let record = locatorMap.get(locator.n)
-                if (record == undefined) {
-                    record = []
-                }
+                let record = locatorMap.get(locator.n) ?? [];
                 record.push(locator.locator)
                 locatorMap.set(locator.n,record)    
             }

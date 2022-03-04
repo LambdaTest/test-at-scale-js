@@ -126,8 +126,8 @@ class JasmineRunner implements TestRunner {
         } catch (err: any) {
             throw new RunnerException(err.stack);
         }
-
     }
+
     async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
         const taskID = process.env.TASK_ID as ID;
         const buildID = process.env.BUILD_ID as ID;
@@ -139,9 +139,6 @@ class JasmineRunner implements TestRunner {
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
         let locators: InputConfig = new InputConfig();
-        if (locatorFile) {
-            locators = Util.getLocatorsConfigFromFile(locatorFile)
-        }
         const executionResults = new ExecutionResults(
             taskID,
             buildID,
@@ -150,13 +147,21 @@ class JasmineRunner implements TestRunner {
             orgID,
             []
         );
-        const locatorSet = Util.createLocatorSet(locators)
-        for (const set of locatorSet) {
-            for (let i=1; i<=set.n; i++) {
-                const result = await this.execute(testFilesGlob, set.locators, argv.config)
-                executionResults.push(result)
+        if (locatorFile) {
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
+            const locatorSet = Util.createLocatorSet(locators)
+            for (const set of locatorSet) {
+                for (let i=1; i<=set.n; i++) {
+                    const result = await this.execute(testFilesGlob, argv.config, set.locators)
+                    executionResults.push(result)
+                }
             }
+        }  else {
+            // run all tests if locator file is not present
+            const result = await this.execute(testFilesGlob, argv.config)
+            executionResults.push(result)
         }
+        
         if (postTestResultsEndpoint) {
             await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }
