@@ -369,7 +369,7 @@ export class ExecutionResults {
 
 export type LocatorConfig = {
     locator: string
-    n: number   
+    numberofexecutions: number   
 }
 
 export class InputConfig {
@@ -382,10 +382,10 @@ export class InputConfig {
 }
 
 export class LocatorSet {
-    n:number
+    numberofexecutions:number
     locators: string[]
-    constructor(n:number, locators: string[]) {
+    constructor(numberofexecutions:number, locators: string[]) {
         this.locators = locators
-        this.n = n
+        this.numberofexecutions = numberofexecutions
     }
 }

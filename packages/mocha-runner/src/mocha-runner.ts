@@ -162,7 +162,7 @@ class MochaRunner implements TestRunner {
             locators = Util.getLocatorsConfigFromFile(locatorFile)
             const locatorSet = Util.createLocatorSet(locators)
             for (let set of locatorSet) {
-                for (let i=1; i<=set.n; i++) {
+                for (let i=1; i<=set.numberofexecutions; i++) {
                     const result = await this.execute(testFilesGlob, set.locators)
                     executionResults.push(result)
                 }

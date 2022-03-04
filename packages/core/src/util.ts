@@ -26,7 +26,6 @@ import {
     LocatorSeparator,
     SMART_INPUT_FILE,
     SMART_OUT_FILE,
-    TASLocatorSeparator
 } from './constants';
 const exec = util.promisify(child_process.exec);
 
@@ -205,15 +204,27 @@ export class Util {
         return Array.from(impactedTests);
     }
 
-    static getLocatorsFromFile(filePath: string): Array<string> {
-        const locators = fs.readFileSync(filePath).toString().split(TASLocatorSeparator)
-        return locators
+    static validateLocatorConfig(inputConfig: InputConfig) {
+        if (inputConfig.mode != TestExecutionMode.Combined &&
+            inputConfig.mode != TestExecutionMode.Individual) {
+            throw Error("Invalid mode value in locator config file")
+        }
+        for (const locator of inputConfig.locators) {
+            if (locator == undefined || locator.locator.length == 0) { 
+               throw Error("missing locator in config file")
+            }
+            if (locator.numberofexecutions == undefined) {
+                throw Error("missing numberofexecutions in config file")
+            }
+            if (isNaN(locator.numberofexecutions)) {
+               throw Error("Invalid numberofexecutions")
+            }
+        }
     }
-
-
     static getLocatorsConfigFromFile(filePath: string): InputConfig {
-        const config = JSON.parse(fs.readFileSync(filePath).toString());             
-        return config
+        const inputConfig = JSON.parse(fs.readFileSync(filePath).toString());
+        this.validateLocatorConfig(inputConfig)
+        return inputConfig
     }
 
     static createLocatorSet(config: InputConfig): LocatorSet[] {
@@ -222,14 +233,14 @@ export class Util {
         switch(config.mode) {
         case TestExecutionMode.Individual:
             for (const locator of config.locators) {
-                locatorSet.push(new LocatorSet(locator.n, [locator.locator]))
+                locatorSet.push(new LocatorSet(locator.numberofexecutions, [locator.locator]))
             }
             break;
         case TestExecutionMode.Combined:    
             for (const locator of config.locators) {
-                let record = locatorMap.get(locator.n) ?? [];
+                let record = locatorMap.get(locator.numberofexecutions) ?? [];
                 record.push(locator.locator)
-                locatorMap.set(locator.n,record)    
+                locatorMap.set(locator.numberofexecutions,record)    
             }
             for(const [n, locators] of locatorMap){
                 locatorSet.push(new LocatorSet(n, locators))
