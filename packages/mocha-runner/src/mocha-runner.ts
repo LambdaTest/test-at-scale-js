@@ -11,6 +11,7 @@ import Mocha from "mocha";
 import {
     DiscoveryResult,
     ExecutionResult,
+    ExecutionResults,
     ID,
     RunnerException,
     Task,
@@ -21,23 +22,22 @@ import {
     TestSuite,
     TestSuiteResult,
     Util,
-    Validations
+    Validations,
+    InputConfig
 } from "@lambdatest/test-at-scale-core";
 import { CustomRunner, MochaHelper } from "./helper";
 
 class MochaRunner implements TestRunner {
 
-    private mocha: Mocha;
     private _blocklistedTests: TestResult[] = [];
     private _blockListedLocators: Set<string> = new Set<string>();
     private _blocklistedSuites: TestSuiteResult[] = [];
     private _testlocator: Set<string> = new Set<string>();
 
-    constructor() {
+    createMochaInstance(): Mocha{
         const argv = parser(hideBin(process.argv), { array: ['diff', "locator"] });
         const mocha = new Mocha(this.getFilteredConfigs(argv));
-        if (mocha.options.require !== undefined) {
-            const cwd = process.cwd();
+        if (mocha.options.require !== undefined) {            const cwd = process.cwd();
             module.paths.push(cwd, path.join(cwd, 'node_modules'));
             if (!(mocha.options.require instanceof Array)) {
                 mocha.options.require = [mocha.options.require];
@@ -46,10 +46,10 @@ class MochaRunner implements TestRunner {
                 require(file);
             }
         }
-        this.mocha = mocha;
+        return mocha;
     }
-
     async discoverTests(argv: parser.Arguments): Promise<DiscoveryResult> {
+        const mocha = this.createMochaInstance()
         const tests: Test[] = [];
         const testSuites: TestSuite[] = [];
 
@@ -69,16 +69,16 @@ class MochaRunner implements TestRunner {
         const testsDepsMap = await Util.listDependencies(testFiles);
 
         for (const filename of testFiles) {
-            this.mocha.addFile(filename);
+            mocha.addFile(filename);
         }
         try {
-            await this.mocha.loadFilesAsync();
+            await mocha.loadFilesAsync();
         } catch (err) {
-            this.mocha['loadFiles']();
+            mocha['loadFiles']();
         }
 
         // pass root suite
-        this.listTestsAndTestSuites(this.mocha.suite, tests, testSuites);
+        this.listTestsAndTestSuites(mocha.suite, tests, testSuites);
         Util.handleDuplicateTests(tests);
         const impactedTests = Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
@@ -97,30 +97,14 @@ class MochaRunner implements TestRunner {
         return result;
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
-
+    async execute(testFilesGlob: string | string[], locators: string[]=[]): Promise<ExecutionResult> {
+        const mocha = this.createMochaInstance()
         const testRunTask = new Task<void>();
-
-        Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
-        const taskID = process.env.TASK_ID as ID;
-        const buildID = process.env.BUILD_ID as ID;
-        const orgID = process.env.ORG_ID as ID;
-        const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
-        const testFilesGlob = argv.pattern as string | string[];
-        const locatorFile = argv.locatorFile as string;
-        let locators;
-        if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile);
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
-        }
-
+        
         this._testlocator = new Set<string>(locators);
 
         this.extendNativeRunner();
-        this.mocha.reporter(require.resolve("./mocha-reporter"));
+        mocha.reporter(require.resolve("./mocha-reporter"));
 
         let testFilesToProcess: Set<string> = new Set();
 
@@ -133,19 +117,14 @@ class MochaRunner implements TestRunner {
         const testFilesToProcessList = Array.from(testFilesToProcess);
 
         for (const filename of testFilesToProcessList) {
-            this.mocha.addFile(filename);
+            mocha.addFile(filename);
         }
-        const runnerWithResults: CustomRunner = this.mocha.run((failures: number) => {
+        const runnerWithResults: CustomRunner = mocha.run((failures: number) => {
             console.error("# of failed tests:", failures);
             testRunTask.resolve();
         });
         await testRunTask.promise;
         const results = new ExecutionResult(
-            taskID,
-            buildID,
-            repoID,
-            commitID,
-            orgID,
             runnerWithResults.testResults ?? [],
             runnerWithResults.testSuiteResults ?? []
         );
@@ -156,10 +135,48 @@ class MochaRunner implements TestRunner {
             results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
                 this._testlocator, this._blockListedLocators)
         }
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, results);
-        }
+        mocha.dispose()
         return results;
+    }
+
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        const taskID = process.env.TASK_ID as ID;
+        const buildID = process.env.BUILD_ID as ID;
+        const orgID = process.env.ORG_ID as ID;
+        const repoID = process.env.REPO_ID as ID;
+        const commitID = process.env.COMMIT_ID as ID;
+        Validations.validateExecutionEnv(argv);
+        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+        const testFilesGlob = argv.pattern as string | string[];
+        const locatorFile = argv.locatorFile as string;
+        let locators: InputConfig = new InputConfig();
+        const executionResults = new ExecutionResults(
+            taskID,
+            buildID,
+            repoID,
+            commitID,
+            orgID,
+        );
+
+        if (locatorFile) {
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
+            const locatorSet = Util.createLocatorSet(locators)
+            for (let set of locatorSet) {
+                for (let i=1; i<=set.numberofexecutions; i++) {
+                    const result = await this.execute(testFilesGlob, set.locators)
+                    executionResults.push(result)
+                }
+            }
+        } else {
+            // run all tests if locator file is not present
+            const result = await this.execute(testFilesGlob)
+            executionResults.push(result)
+        }
+
+        if (postTestResultsEndpoint) {
+            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
+        }
+        return executionResults;
     }
 
     private listTestsAndTestSuites(

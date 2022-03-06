@@ -236,6 +236,11 @@ export enum TestStatus {
     BlockListed = 'blocklisted'
 }
 
+export enum TestExecutionMode {
+    Combined = 'combined',
+    Individual = 'individual'
+}
+
 export class TestSuiteResult extends TestSuite {
     duration: number;
     status: TestStatus;
@@ -278,41 +283,21 @@ export class TestSuiteResult extends TestSuite {
 }
 
 export class ExecutionResult {
-    taskID: ID;
-    buildID: ID;
-    repoID: ID;
-    commitID: ID;
-    orgID: ID;
     testResults: TestResult[];
     testSuiteResults: TestSuiteResult[];
 
     constructor(
-        taskID: ID,
-        buildID: ID,
-        repoID: ID,
-        commitID: ID,
-        orgID: ID,
         testResults: TestResult[] = [],
         testSuiteResults: TestSuiteResult[] = []
     ) {
-        this.taskID = taskID;
-        this.buildID = buildID;
-        this.repoID = repoID;
-        this.orgID = orgID;
         this.testResults = testResults;
         this.testSuiteResults = testSuiteResults;
-        this.commitID = commitID
     }
 
     static fromJSON(jsonResult: any): ExecutionResult {
         const testResults = (jsonResult.testResults ?? []).map(TestResult.fromJSON);
         const testSuiteResults = (jsonResult.testSuiteResults ?? []).map(TestSuiteResult.fromJSON);
         return new ExecutionResult(
-            jsonResult.taskID,
-            jsonResult.buildID,
-            jsonResult.repoID,
-            jsonResult.commitID,
-            jsonResult.orgID,
             testResults,
             testSuiteResults
         );
@@ -336,7 +321,6 @@ export class ChildProcMessage {
 }
 
 export type TestsDependenciesMap = Map<string, Set<string>>;
-
 export class TestDependencies {
     testFile: string;
     dependsOn: string[];
@@ -351,5 +335,57 @@ export class RunnerException extends Error {
         if (msg) {
             super(msg);
         }
+    }
+}
+
+export class ExecutionResults {
+    taskID: ID;
+    buildID: ID;
+    repoID: ID;
+    commitID: ID;
+    orgID: ID;
+    results: ExecutionResult[];
+    constructor(taskID: ID,
+        buildID: ID,
+        repoID: ID,
+        commitID: ID,
+        orgID: ID,
+        results: ExecutionResult[] = [],
+        ) {
+        this.taskID = taskID;
+        this.buildID = buildID;
+        this.repoID = repoID;
+        this.orgID = orgID;
+        this.commitID = commitID;
+        this.results = results;
+    }
+    push(executionResult: ExecutionResult) {
+        this.results.push(executionResult)
+    }
+    pop() {
+        this.results.pop()
+    }
+}
+
+export type LocatorConfig = {
+    locator: string
+    numberofexecutions: number   
+}
+
+export class InputConfig {
+    mode: string
+    locators:LocatorConfig[]
+    constructor() {
+        this.mode = TestExecutionMode.Combined
+        this.locators = []
+    }
+}
+
+export class LocatorSet {
+    numberofexecutions:number
+    locators: string[]
+    constructor(numberofexecutions:number, locators: string[]) {
+        this.locators = locators
+        this.numberofexecutions = numberofexecutions
     }
 }

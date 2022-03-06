@@ -7,7 +7,7 @@ import axios, { AxiosError } from 'axios';
 import { JSONStream } from './json-utils';
 import {
     DiscoveryResult,
-    ExecutionResult,
+    ExecutionResults,
     ID,
     Locator,
     Test,
@@ -16,16 +16,17 @@ import {
     TestsDependenciesMap,
     TestSuiteResult,
     TestStatus,
-    TestSuite
+    TestSuite,
+    InputConfig,
+    TestExecutionMode,
+    LocatorSet
 } from './model';
 import {
     DEFAULT_API_TIMEOUT,
     LocatorSeparator,
     SMART_INPUT_FILE,
     SMART_OUT_FILE,
-    TASLocatorSeparator
 } from './constants';
-
 const exec = util.promisify(child_process.exec);
 
 export class Util {
@@ -150,7 +151,7 @@ export class Util {
         return !!blocklistedLocators.find((item) => { return Locator.from(item.locator)?.liesCompletelyIn(locator); });
     }
 
-    static async makeApiRequestPost(url: string, data: DiscoveryResult | ExecutionResult): Promise<void> {
+    static async makeApiRequestPost(url: string, data: DiscoveryResult | ExecutionResults): Promise<void> {
         try {
             await axios.post(url, data, {
                 timeout: DEFAULT_API_TIMEOUT,
@@ -203,9 +204,50 @@ export class Util {
         return Array.from(impactedTests);
     }
 
-    static getLocatorsFromFile(filePath: string): Array<string> {
-        const locators = fs.readFileSync(filePath).toString().split(TASLocatorSeparator)
-        return locators
+    static validateLocatorConfig(inputConfig: InputConfig) {
+        if (inputConfig.mode != TestExecutionMode.Combined &&
+            inputConfig.mode != TestExecutionMode.Individual) {
+            throw Error("Invalid mode value in locator config file")
+        }
+        for (const locator of inputConfig.locators) {
+            if (locator == undefined || locator.locator.length == 0) { 
+               throw Error("missing locator in config file")
+            }
+            if (locator.numberofexecutions == undefined) {
+                throw Error("missing numberofexecutions in config file")
+            }
+            if (isNaN(locator.numberofexecutions)) {
+               throw Error("Invalid numberofexecutions")
+            }
+        }
+    }
+    static getLocatorsConfigFromFile(filePath: string): InputConfig {
+        const inputConfig = JSON.parse(fs.readFileSync(filePath).toString());
+        this.validateLocatorConfig(inputConfig)
+        return inputConfig
+    }
+
+    static createLocatorSet(config: InputConfig): LocatorSet[] {
+        const locatorSet: LocatorSet[] = []
+        const locatorMap: Map<number, string[]> = new  Map<number, string[]>() 
+        switch(config.mode) {
+        case TestExecutionMode.Individual:
+            for (const locator of config.locators) {
+                locatorSet.push(new LocatorSet(locator.numberofexecutions, [locator.locator]))
+            }
+            break;
+        case TestExecutionMode.Combined:    
+            for (const locator of config.locators) {
+                let record = locatorMap.get(locator.numberofexecutions) ?? [];
+                record.push(locator.locator)
+                locatorMap.set(locator.numberofexecutions,record)    
+            }
+            for(const [n, locators] of locatorMap){
+                locatorSet.push(new LocatorSet(n, locators))
+            }
+            break;
+        }
+        return locatorSet
     }
 
     static handleDuplicateTests(tests: Test[]): void {

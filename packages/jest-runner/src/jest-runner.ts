@@ -13,6 +13,7 @@ import { hideBin } from "yargs/helpers";
 import {
     DiscoveryResult,
     ExecutionResult,
+    ExecutionResults,
     ID,
     JSONStream,
     LocatorSeparator,
@@ -24,7 +25,8 @@ import {
     TestsDependenciesMap,
     TestSuite,
     Util,
-    Validations
+    Validations,
+    InputConfig
 } from "@lambdatest/test-at-scale-core";
 import {
     DISCOVERY_RESULT_FILE,
@@ -99,25 +101,10 @@ class JestRunner implements TestRunner {
         return discoveryResult;
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
-        Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
-        const taskID = process.env.TASK_ID as ID;
-        const buildID = process.env.BUILD_ID as ID;
-        const orgID = process.env.ORG_ID as ID;
-        const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
-        const testFilesGlob = argv.pattern as string | string[];
-        const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
-        const locatorFile = argv.locatorFile as string;
-        let locators
-        if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile)
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
-        }
-        const testLocators = new Set<string>(locators);
 
+    async execute(testFilesGlob: string| string[], cleanup: string, locators: string[]=[]): Promise<ExecutionResult> {
+        const testLocators = new Set<string>(locators);
+        
         let testFilesToProcess: Set<string> = new Set();
 
         if (testLocators.size == 0) {
@@ -130,7 +117,7 @@ class JestRunner implements TestRunner {
 
         const testFilesToProcessList = Array.from(testFilesToProcess);
         if (testFilesToProcessList.length == 0) {
-            return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+            return new ExecutionResult();
         }
         const [regex, blockListedLocators] = this.getBlockListedTestAndTestRegex(testFilesToProcessList, testLocators)
 
@@ -154,12 +141,45 @@ class JestRunner implements TestRunner {
                     executionResult.testSuiteResults)
             }
         }
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResult);
-
-        }
-
         return executionResult;
+    }
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        const taskID = process.env.TASK_ID as ID;
+        const buildID = process.env.BUILD_ID as ID;
+        const orgID = process.env.ORG_ID as ID;
+        const repoID = process.env.REPO_ID as ID;
+        const commitID = process.env.COMMIT_ID as ID;
+        Validations.validateExecutionEnv(argv);
+        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+        const testFilesGlob = argv.pattern as string | string[];
+        const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
+        const locatorFile = argv.locatorFile as string;
+        let locators: InputConfig = new InputConfig();
+        const executionResults = new ExecutionResults(
+            taskID,
+            buildID,
+            repoID,
+            commitID,
+            orgID,
+        );
+        if (locatorFile) {
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
+            const locatorSet = Util.createLocatorSet(locators)
+            for (const set of locatorSet) {
+                for (let i=1; i<=set.numberofexecutions; i++) {
+                    const result = await this.execute(testFilesGlob, cleanup, set.locators)
+                    executionResults.push(result)
+                }
+            }
+        } else {
+            // run all tests if locator file is not present
+            const result = await this.execute(testFilesGlob, cleanup)
+            executionResults.push(result)
+        } 
+        if (postTestResultsEndpoint) {
+            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
+        }
+        return executionResults;
     }
 
     private async runJest(

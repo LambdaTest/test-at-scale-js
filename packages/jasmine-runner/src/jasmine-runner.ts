@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-empty-function */
-
 import glob from "fast-glob";
 import path from "path";
 import crypto from "crypto";
@@ -10,6 +9,7 @@ import { hideBin } from "yargs/helpers";
 import {
     DiscoveryResult,
     ExecutionResult,
+    ExecutionResults,
     ID,
     RunnerException,
     Test,
@@ -17,7 +17,8 @@ import {
     TestSuite,
     Util,
     Validations,
-    Task
+    Task,
+    InputConfig
 } from "@lambdatest/test-at-scale-core";
 import Jasmine from "jasmine";
 import { CustomReporter } from "./jasmine-reporter";
@@ -65,27 +66,12 @@ class JasmineRunner implements TestRunner {
         }
     }
 
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResult> {
-        const runTask = new Task<ExecutionResult>();
-        const entityIdFilenameMap = new Map<number, string>();
-
-        Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
-        const taskID = process.env.TASK_ID as ID;
-        const buildID = process.env.BUILD_ID as ID;
-        const orgID = process.env.ORG_ID as ID;
-        const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
-        const testFilesGlob = argv.pattern as string | string[];
-        const locatorFile = argv.locatorFile as string;
-        let locators;
-        if (locatorFile) {
-            locators = Util.getLocatorsFromFile(locatorFile);
-        } else {
-            locators = argv.locator as Array<string> ? argv.locator : Array<string>();
-        }
+    async execute(testFilesGlob: string|string[], config: string, locators: string[]=[]): Promise<ExecutionResult>   {
         const testLocators = new Set<string>(locators)
         const blockListedLocators = new Set<string>()
+        const entityIdFilenameMap = new Map<number, string>();
+        const runTask = new Task<ExecutionResult>();
+
         try {
             let testFilesToProcess: Set<string> = new Set();
 
@@ -97,43 +83,89 @@ class JasmineRunner implements TestRunner {
             }
             const testFilesToProcessList = Array.from(testFilesToProcess);
             if (testFilesToProcessList.length == 0) {
-                return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+                return new ExecutionResult();
             }
 
             if (!testFilesToProcessList) {
-                return new ExecutionResult(taskID, buildID, repoID, commitID, orgID);
+                return new ExecutionResult();
             }
+           
+            const jasmineObj = await this.createJasmineRunner(config);
 
-            const jasmineObj = await this.createJasmineRunner(argv.config);
             await this.loadSpecs(jasmineObj, testFilesToProcessList, entityIdFilenameMap);
+            const rootSuite = jasmineObj.env.topSuite();
             const specIdsToRun: number[] = [];
-            this.fetchSpecIdsToRun(jasmine.getEnv().topSuite(), specIdsToRun, entityIdFilenameMap,
+          
+            this.fetchSpecIdsToRun(rootSuite, specIdsToRun, entityIdFilenameMap,
                 testLocators, blockListedLocators);
-            if (specIdsToRun.length == 0) {
+            
+                if (specIdsToRun.length == 0) {
                 // pushing an invalid specID because if we pass empty array, it runs all specs
                 specIdsToRun.push(-1);
             }
             const reporter = new CustomReporter(runTask, entityIdFilenameMap);
-            jasmineObj.env.addReporter(reporter);
+            jasmine.getEnv().addReporter(reporter);
             await jasmine.getEnv().execute(specIdsToRun as unknown as jasmine.Suite[]);
-            const executionResults = await runTask.promise;
-            Util.handleDuplicateTests(executionResults.testResults);
+            const executionResult = await runTask.promise;
+            Util.handleDuplicateTests(executionResult.testResults);
             if (locators.length > 0) {
-                executionResults.testResults = Util.filterTestResultsByTestLocator(executionResults.testResults,
+                executionResult.testResults = Util.filterTestResultsByTestLocator(executionResult.testResults,
                     testLocators, blockListedLocators)
-                if (executionResults.testSuiteResults.length > 0) {
-                    executionResults.testSuiteResults = Util.filterTestSuiteResults(executionResults.testResults,
-                        executionResults.testSuiteResults)
+                if (executionResult.testSuiteResults.length > 0) {
+                    executionResult.testSuiteResults = Util.filterTestSuiteResults(executionResult.testResults,
+                        executionResult.testSuiteResults)
                 }
             }
-            if (postTestResultsEndpoint) {
-                await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
+
+            // removing spec from cache to reload specs when new jasmine instance is created
+            for (const spec of testFilesToProcessList) {
+                delete require.cache[spec];
             }
-            return executionResults;
+            return executionResult;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             throw new RunnerException(err.stack);
         }
+    }
+
+    async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
+        const taskID = process.env.TASK_ID as ID;
+        const buildID = process.env.BUILD_ID as ID;
+        const orgID = process.env.ORG_ID as ID;
+        const repoID = process.env.REPO_ID as ID;
+        const commitID = process.env.COMMIT_ID as ID;
+        Validations.validateExecutionEnv(argv);
+        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
+        const testFilesGlob = argv.pattern as string | string[];
+        const locatorFile = argv.locatorFile as string;
+        let locators: InputConfig = new InputConfig();
+        const executionResults = new ExecutionResults(
+            taskID,
+            buildID,
+            repoID,
+            commitID,
+            orgID,
+            []
+        );
+        if (locatorFile) {
+            locators = Util.getLocatorsConfigFromFile(locatorFile)
+            const locatorSet = Util.createLocatorSet(locators)
+            for (const set of locatorSet) {
+                for (let i=1; i<=set.numberofexecutions; i++) {
+                    const result = await this.execute(testFilesGlob, argv.config, set.locators)
+                    executionResults.push(result)
+                }
+            }
+        }  else {
+            // run all tests if locator file is not present
+            const result = await this.execute(testFilesGlob, argv.config)
+            executionResults.push(result)
+        }
+        
+        if (postTestResultsEndpoint) {
+            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
+        }
+        return executionResults;   
     }
 
     private async createJasmineRunner(jasmineConfigFile: string | undefined): Promise<Jasmine> {
@@ -154,7 +186,7 @@ class JasmineRunner implements TestRunner {
             jasmineObj.loadConfig(config);
             await jasmineObj.loadHelpers();
         }
-
+        
         jasmineObj.env.clearReporters();
         jasmineObj.randomizeTests(false);
         return jasmineObj;

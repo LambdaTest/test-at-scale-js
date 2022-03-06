@@ -71,17 +71,7 @@ class JestReporter {
     }
 
     onRunComplete(): void {
-        const repoID = process.env.REPO_ID as ID;
-        const orgID = process.env.ORG_ID as ID;
-        const buildID = process.env.BUILD_ID as ID;
-        const taskID = process.env.TASK_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
         const executionResult = new ExecutionResult(
-            taskID,
-            buildID,
-            repoID,
-            commitID,
-            orgID,
             this.testResults,
             Array.from(this.testSuiteResults.values())
         );
