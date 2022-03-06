@@ -204,7 +204,7 @@ export class Util {
         return Array.from(impactedTests);
     }
 
-    static validateLocatorConfig(inputConfig: InputConfig) {
+    static validateLocatorConfig(inputConfig: InputConfig): void {
         if (inputConfig.mode != TestExecutionMode.Combined &&
             inputConfig.mode != TestExecutionMode.Individual) {
             throw Error("Invalid mode value in locator config file")
@@ -238,7 +238,7 @@ export class Util {
             break;
         case TestExecutionMode.Combined:    
             for (const locator of config.locators) {
-                let record = locatorMap.get(locator.numberofexecutions) ?? [];
+                const record = locatorMap.get(locator.numberofexecutions) ?? [];
                 record.push(locator.locator)
                 locatorMap.set(locator.numberofexecutions,record)    
             }
