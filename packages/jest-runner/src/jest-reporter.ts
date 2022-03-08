@@ -49,11 +49,12 @@ class JestReporter {
         }
 
         const filename = test.path;
-        // append blocklisted testResults
+        // append block testResults
         testResult.testResults.forEach((jestTestResult) => {
             const locator = Util.getLocator(filename, jestTestResult.ancestorTitles, jestTestResult.title);
-            if (Util.isBlocklistedLocator(locator)) {
-                this.testResults.push(this.toTASTestResult(jestTestResult, TASTestStatus.BlockListed));
+            const blockTest = Util.getBlockTestLocatorProperties(locator)
+            if (blockTest.isBlocked) {
+                this.testResults.push(this.toTASTestResult(jestTestResult, Util.getTestStatus(blockTest.type)));
             } else {
                 this.testResults.push(this.toTASTestResult(jestTestResult, Util.getTestStatus(jestTestResult.status)));
             }
@@ -84,7 +85,7 @@ class JestReporter {
     private toTASTestResult(testCaseResult: AssertionResult, status: TASTestStatus): TASTestResult {
         let specStartTime: Date | null = null;
         if ((status === TASTestStatus.Passed || status === TASTestStatus.Failed) && this.tIndex < this.timings.length) {
-            // test-case ran (not skipped or blocklisted). Hence, will have an ordered entry in timings file
+            // test-case ran (not skipped or blocked). Hence, will have an ordered entry in timings file
             specStartTime = this.timings[this.tIndex++];
         }
         const duration: number = testCaseResult.duration ?? 0;
@@ -96,7 +97,7 @@ class JestReporter {
         const testIdentifier = Util.getIdentifier(filename, testCaseResult.title);
         const locator = Util.getLocator(filename, ancestorTitles, testCaseResult.title);
         const suiteIdentifiers = ancestorTitles.map((suiteName) => Util.getIdentifier(filename, suiteName));
-        const blocklistSource = Util.getBlocklistedSource(locator);
+        const blockTest = Util.getBlockTestLocatorProperties(locator);
         let failureMessage: string | null = null;
         if (status === TASTestStatus.Failed) {
             failureMessage = testCaseResult.failureMessages.join(', ');
@@ -118,8 +119,8 @@ class JestReporter {
             locator,
             duration,
             status,
-            !!blocklistSource,
-            blocklistSource,
+            blockTest.isBlocked,
+            blockTest.source,
             specStartTime,
             failureMessage
         );
@@ -130,14 +131,14 @@ class JestReporter {
             const parentSuiteIdentifiers = thisSuiteIdentifiers.slice(0, -1);
             const suiteIdentifier = Util.getIdentifier(filename, suiteTitle);
             const suiteLocator = Util.getLocator(filename, ancestorTitles.slice(0, i), suiteTitle);
-            const suiteBlocklistSource = Util.getBlocklistedSource(suiteLocator);
+            const blockSuite = Util.getBlockTestLocatorProperties(suiteLocator);
             const suiteID = crypto
                 .createHash("md5")
                 .update(repoID + "\n" + thisSuiteIdentifiers.join("\n"))
                 .digest("hex");
             const suiteParams = this.getSuiteParams(suiteID, duration, status, specStartTime);
-            if (suiteBlocklistSource) {
-                suiteParams.status = TASTestStatus.BlockListed;
+            if (blockSuite.isBlocked) {
+                suiteParams.status = Util.getTestStatus(blockSuite.type);
             }
             const testSuite = new TASTestSuiteResult(
                 suiteID,
@@ -150,8 +151,8 @@ class JestReporter {
                     : null,
                 suiteParams.duration,
                 suiteParams.status,
-                !!suiteBlocklistSource,
-                suiteBlocklistSource,
+                blockSuite.isBlocked,
+                blockSuite.source,
                 suiteParams.startTime
             )
             this.testSuiteResults.set(testSuite.suiteID, testSuite);
@@ -191,6 +192,11 @@ class JestReporter {
         if (suiteStatus === TASTestStatus.BlockListed) {
             return TASTestStatus.BlockListed;
         }
+
+        if (suiteStatus === TASTestStatus.Quarantined) {
+            return TASTestStatus.Quarantined;
+        }
+
         if (suiteStatus === TASTestStatus.Failed || testStatus === TASTestStatus.Failed) {
             return TASTestStatus.Failed;
         }

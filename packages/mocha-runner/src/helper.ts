@@ -30,7 +30,7 @@ export class MochaHelper {
 
         const testIdentifier = Util.getIdentifier(filename, test.title);
         const locator = Util.getLocator(filename, parentSuites, test.title);
-        const blocklistSource = Util.getBlocklistedSource(locator);
+        const blockTest = Util.getBlockTestLocatorProperties(locator);
         const duration: number = test.duration ?? (new Date()).getTime() - specStartTime.getTime();
         return new TestResult(
             crypto
@@ -49,8 +49,8 @@ export class MochaHelper {
             locator,
             duration,
             state,
-            !!blocklistSource,
-            blocklistSource,
+            blockTest.isBlocked,
+            blockTest.source,
             specStartTime,
             failureMessage ? failureMessage: null,
         );
@@ -71,7 +71,7 @@ export class MochaHelper {
         const suiteIdentifier = Util.getIdentifier(filename, suite.title);
         const suiteIdentifiers = parentSuiteIdentifiers.concat(suiteIdentifier);
         const locator = Util.getLocator(filename, parentSuites, suite.title);
-        const blocklistSource = Util.getBlocklistedSource(locator);
+        const blocktest = Util.getBlockTestLocatorProperties(locator);
         const duration: number = (new Date()).getTime() - suiteStartTime.getTime();
         return new TestSuiteResult(
             crypto
@@ -87,8 +87,8 @@ export class MochaHelper {
                 : null,
             duration,
             state,
-            !!blocklistSource,
-            blocklistSource,
+            blocktest.isBlocked,
+            blocktest.source,
             suiteStartTime
         );
     }

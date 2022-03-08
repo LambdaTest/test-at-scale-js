@@ -21,7 +21,7 @@ import {
     InputConfig,
 } from "@lambdatest/test-at-scale-core";
 import Jasmine from "jasmine";
-import { CustomReporter } from "./jasmine-reporter";
+import { CustomReporter } from "./jasmine-reporter"
 
 class JasmineRunner implements TestRunner {
 
@@ -68,7 +68,7 @@ class JasmineRunner implements TestRunner {
 
     async execute(testFilesGlob: string|string[], config: string, locators: string[]=[]): Promise<ExecutionResult>   {
         const testLocators = new Set<string>(locators)
-        const blockListedLocators = new Set<string>()
+        const blockTestLocators = new Set<string>()
         const entityIdFilenameMap = new Map<number, string>();
         const runTask = new Task<ExecutionResult>();
 
@@ -97,7 +97,7 @@ class JasmineRunner implements TestRunner {
             const specIdsToRun: number[] = [];
           
             this.fetchSpecIdsToRun(rootSuite, specIdsToRun, entityIdFilenameMap,
-                testLocators, blockListedLocators);
+                testLocators, blockTestLocators);
             
                 if (specIdsToRun.length == 0) {
                 // pushing an invalid specID because if we pass empty array, it runs all specs
@@ -110,7 +110,7 @@ class JasmineRunner implements TestRunner {
             Util.handleDuplicateTests(executionResult.testResults);
             if (locators.length > 0) {
                 executionResult.testResults = Util.filterTestResultsByTestLocator(executionResult.testResults,
-                    testLocators, blockListedLocators)
+                    testLocators, blockTestLocators)
                 if (executionResult.testSuiteResults.length > 0) {
                     executionResult.testSuiteResults = Util.filterTestSuiteResults(executionResult.testResults,
                         executionResult.testSuiteResults)
@@ -126,46 +126,6 @@ class JasmineRunner implements TestRunner {
         } catch (err: any) {
             throw new RunnerException(err.stack);
         }
-    }
-
-    async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
-        const taskID = process.env.TASK_ID as ID;
-        const buildID = process.env.BUILD_ID as ID;
-        const orgID = process.env.ORG_ID as ID;
-        const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
-        Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
-        const testFilesGlob = argv.pattern as string | string[];
-        const locatorFile = argv.locatorFile as string;
-        let locators: InputConfig = new InputConfig();
-        const executionResults = new ExecutionResults(
-            taskID,
-            buildID,
-            repoID,
-            commitID,
-            orgID,
-            []
-        );
-        if (locatorFile) {
-            locators = Util.getLocatorsConfigFromFile(locatorFile)
-            const locatorSet = Util.createLocatorSet(locators)
-            for (const set of locatorSet) {
-                for (let i=1; i<=set.numberofexecutions; i++) {
-                    const result = await this.execute(testFilesGlob, argv.config, set.locators)
-                    executionResults.push(result)
-                }
-            }
-        }  else {
-            // run all tests if locator file is not present
-            const result = await this.execute(testFilesGlob, argv.config)
-            executionResults.push(result)
-        }
-        
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
-        }
-        return executionResults;   
     }
 
     async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
@@ -328,7 +288,7 @@ class JasmineRunner implements TestRunner {
         specIdsToRun: number[],
         entityIdFilenameMap: Map<number, string>,
         testLocators: Set<string>,
-        blockListedTestLocators: Set<string>,
+        blockTestLocators: Set<string>,
         ancestorTitles: string[] = [],
     ) {
         for (const child of currentSuite.children) {
@@ -337,23 +297,23 @@ class JasmineRunner implements TestRunner {
                 const childSuite = child as jasmine.Suite;
                 ancestorTitles.push(child.description);
                 this.fetchSpecIdsToRun(childSuite, specIdsToRun, entityIdFilenameMap,
-                    testLocators, blockListedTestLocators, ancestorTitles);
+                    testLocators, blockTestLocators, ancestorTitles);
                 ancestorTitles.pop();
             } else {
                 // child is a Spec
                 const filename = entityIdFilenameMap.get(child.id) ?? "";
                 const locator = Util.getLocator(filename, ancestorTitles, child.description);
-                const blockListed = Util.isBlocklistedLocator(locator)
+                const blockTest = Util.getBlockTestLocatorProperties(locator)
                 if (testLocators.size > 0) {
                     if (testLocators.has(locator.toString())) {
-                        if (!blockListed) {
+                        if (!blockTest.isBlocked) {
                             specIdsToRun.push(child.id);
                         } else {
-                            // keep list of blacklisted locators, so as to not filter in final results
-                            blockListedTestLocators.add(locator.toString());
+                            // keep list of block test locators, so as to not filter in final results
+                            blockTestLocators.add(locator.toString());
                         }
                     }
-                } else if (!blockListed) {
+                } else if (!blockTest.isBlocked) {
                     specIdsToRun.push(child.id);
                 }
 
