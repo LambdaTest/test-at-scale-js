@@ -334,6 +334,7 @@ class MochaRunner implements TestRunner {
 }
 
 (async () => {
+    const st = new Date();
     const runner = new MochaRunner();
     try {
         const argv = parser(hideBin(process.argv), {
@@ -356,7 +357,7 @@ class MochaRunner implements TestRunner {
         console.error(e.stack);
         process.exit(-1);
     }
-    console.log("done");
+    console.log("done in", (new Date()).getTime() - st.getTime(), "ms");
     process.exit(0);
 })();
 

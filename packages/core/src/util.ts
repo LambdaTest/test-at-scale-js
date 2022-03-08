@@ -357,6 +357,7 @@ export class Util {
     }
 
     static async listDependencies(testFiles: string[]): Promise<TestsDependenciesMap | null> {
+        const st = new Date();
         const testsDeps = await this.execSmartMode({
             "function": "listDependencies",
             "testFiles": testFiles
@@ -368,6 +369,7 @@ export class Util {
                 testsDepsMap.set(k, new Set<string>(v as string[]));
             }
         }
+        console.log("listDependencies:", (new Date()).getTime() - st.getTime(), "ms");
         return testsDepsMap;
     }
 
@@ -380,7 +382,8 @@ export class Util {
         try {
             fs.mkdirSync(path.dirname(SMART_INPUT_FILE), { recursive: true })
             await JSONStream.stringify(input, fs.createWriteStream(SMART_INPUT_FILE), JSONStream.replacer);
-            await exec(command + ' --inputFile=' + SMART_INPUT_FILE);
+            const { stdout } = await exec(command + ' --inputFile=' + SMART_INPUT_FILE);
+            console.log(stdout);
             return await JSONStream.parse(fs.createReadStream(SMART_OUT_FILE));
             // eslint-disable-next-line no-empty
         } catch (err) { 
@@ -390,6 +393,7 @@ export class Util {
     }
 
     private static async isSmartSelectAvailable(): Promise<boolean> {
+        const st = new Date();
         const command = process.env.SMART_BINARY as string;
         if (!command) {
             this.smartSelectAvailable = false;
@@ -403,6 +407,7 @@ export class Util {
             }
             this.smartSelectAvailable = true;
         }
+        console.log("smart presence check:", (new Date()).getTime() - st.getTime(), "ms");
         return this.smartSelectAvailable;
     }
 }
