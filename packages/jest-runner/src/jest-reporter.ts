@@ -32,7 +32,7 @@ class JestReporter {
         this.timings = [];
         this.tIndex = 0;
     }
-    
+
     onTestStart(test: Test): void {
         this.filename = test.path;
         this.tIndex = 0;
@@ -41,9 +41,9 @@ class JestReporter {
     onTestResult(test: Test, testResult: TestResult): void {
         const CODE_COVERAGE_DIR = process.env.CODE_COVERAGE_DIR as string;
         try {
-            this.timings = (JSON.parse(fs.readFileSync(TIMINGS_FILE, {encoding: "utf-8"})) as string[])
+            this.timings = (JSON.parse(fs.readFileSync(TIMINGS_FILE, { encoding: "utf-8" })) as string[])
                 .map((dateStr) => new Date(dateStr));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             this.timings = [];
         }
@@ -97,7 +97,10 @@ class JestReporter {
         const locator = Util.getLocator(filename, ancestorTitles, testCaseResult.title);
         const suiteIdentifiers = ancestorTitles.map((suiteName) => Util.getIdentifier(filename, suiteName));
         const blocklistSource = Util.getBlocklistedSource(locator);
-
+        let failureMessage: string | null = null;
+        if (status === TASTestStatus.Failed) {
+            failureMessage = testCaseResult.failureMessages.join(', ');
+        }
         const testResult = new TASTestResult(
             crypto
                 .createHash("md5")
@@ -117,7 +120,8 @@ class JestReporter {
             status,
             !!blocklistSource,
             blocklistSource,
-            specStartTime
+            specStartTime,
+            failureMessage
         );
 
         for (let i = 0; i < ancestorTitles.length; i++) {
@@ -175,7 +179,7 @@ class JestReporter {
         } else if (testStartTime) {
             suiteStartTime = new Date(testStartTime);
         }
-        
+
         return {
             duration: existing.duration + testDuration,
             status: this.winnerSuiteStatus(existing.status, testStatus),

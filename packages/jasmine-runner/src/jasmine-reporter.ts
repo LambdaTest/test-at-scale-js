@@ -98,7 +98,10 @@ export class CustomReporter implements jasmine.CustomReporter {
         }
         // get test status
         result.status = Util.getTestStatus(result.status)
-        
+        let failureMessage: string | null = null;
+        if (result.status === TestStatus.Failed) {
+            failureMessage = result.failedExpectations.map((failedExpectation) => failedExpectation.message).join(', ')
+        }
         const duration: number = result.duration ?? ((new Date()).getTime() - this.specStartTime.getTime())
         const test = new TestResult(
             crypto
@@ -119,7 +122,8 @@ export class CustomReporter implements jasmine.CustomReporter {
             result.status as TestStatus,
             !!blocklistSource,
             blocklistSource,
-            this.specStartTime
+            this.specStartTime,
+            failureMessage
         );
         this.executionResults.testResults.push(test);
     }

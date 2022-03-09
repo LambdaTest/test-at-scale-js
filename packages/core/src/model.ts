@@ -185,6 +185,7 @@ export class TestResult extends Test {
     blocklistSource: string | null;
     start_time: string | null;
     end_time: string | null;
+    failureMessage: string | null;
 
     constructor(
         id: ID,
@@ -197,7 +198,8 @@ export class TestResult extends Test {
         status: TestStatus,
         blocklist: boolean,
         blocklistSource: string | null,
-        startTime: Date | null
+        startTime: Date | null,
+        failureMessage: string | null,
     ) {
         super(id, _detail, title, suiteID, commitID, "", locator);
         this.duration = duration;
@@ -208,6 +210,7 @@ export class TestResult extends Test {
             // skip metrics allocation by setting startTime to null
             startTime = null;
         }
+        this.failureMessage = failureMessage;
         this.start_time = startTime ? startTime.toISOString() : null;
         this.end_time = startTime ? (new Date(startTime.getTime() + duration)).toISOString() : null;
     }
@@ -224,7 +227,8 @@ export class TestResult extends Test {
             jsonResult.status,
             jsonResult.blocklist,
             jsonResult.blocklistSource,
-            jsonResult.start_time ? new Date(jsonResult.start_time) : null
+            jsonResult.start_time ? new Date(jsonResult.start_time) : null,
+            jsonResult.failureMessage,
         );
     }
 }
