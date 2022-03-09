@@ -103,7 +103,7 @@ export class CustomReporter implements jasmine.CustomReporter {
         result.status = Util.getTestStatus(result.status)
         let failureMessage: string | null = null;
         if (result.status === TestStatus.Failed) {
-            failureMessage = result.failedExpectations.map((failedExpectation) => failedExpectation.message).join(',')
+            failureMessage = result.failedExpectations.map((failedExpectation) => failedExpectation.message).join(', ')
         }
         const duration: number = result.duration ?? ((new Date()).getTime() - this.specStartTime.getTime())
         const test = new TestResult(
