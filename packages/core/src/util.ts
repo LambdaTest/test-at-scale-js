@@ -177,7 +177,7 @@ export class Util {
         return str.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'); // $& means the whole matched string
     }
     static async findImpactedTests(
-        testFiles: string[],
+        testsDepsMap: TestsDependenciesMap | null, 
         tests: Test[],
         changedFilesSet: Set<string>
     ): Promise<[ID[], boolean]>  {
@@ -189,7 +189,6 @@ export class Util {
             return [[], executeAllTests];
         }
         const impactedTests = new Set<ID>();
-        const testsDepsMap = await this.listDependencies(testFiles);
         for (const test of tests) {
             if (changedFilesSet.has(test.filepath)) {
                 impactedTests.add(test.testID);

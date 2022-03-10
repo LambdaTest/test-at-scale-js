@@ -81,12 +81,12 @@ class JestRunner implements TestRunner {
                 testsDepsMap.set(k, new Set<string>(v as string[]));
             }
         }
-        const impactedTests = Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
+        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
         const discoveryResult = new DiscoveryResult(tests,
             testSuites,
             impactedTests,
-            repoID, commitID, buildID, taskID, orgID, branch, !!argv.diff, parallelism);
+            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
         if (cleanup) {
             await fs.promises.rm(TAS_DIRECTORY, { recursive: true });
         }
@@ -102,9 +102,9 @@ class JestRunner implements TestRunner {
     }
 
 
-    async execute(testFilesGlob: string| string[], cleanup: string, locators: string[]=[]): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], cleanup: string, locators: string[] = []): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators);
-        
+
         let testFilesToProcess: Set<string> = new Set();
 
         if (testLocators.size == 0) {
@@ -166,7 +166,7 @@ class JestRunner implements TestRunner {
             locators = Util.getLocatorsConfigFromFile(locatorFile)
             const locatorSet = Util.createLocatorSet(locators)
             for (const set of locatorSet) {
-                for (let i=1; i<=set.numberofexecutions; i++) {
+                for (let i = 1; i <= set.numberofexecutions; i++) {
                     const result = await this.execute(testFilesGlob, cleanup, set.locators)
                     executionResults.push(result)
                 }
@@ -175,7 +175,7 @@ class JestRunner implements TestRunner {
             // run all tests if locator file is not present
             const result = await this.execute(testFilesGlob, cleanup)
             executionResults.push(result)
-        } 
+        }
         if (postTestResultsEndpoint) {
             await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }

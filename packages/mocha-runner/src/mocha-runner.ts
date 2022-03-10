@@ -80,10 +80,11 @@ class MochaRunner implements TestRunner {
             mocha['loadFiles']();
         }
 
+        const testsDepsMap = await Util.listDependencies(testFiles);
         // pass root suite
         this.listTestsAndTestSuites(mocha.suite, tests, testSuites);
         Util.handleDuplicateTests(tests);
-        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testFiles, tests, changedFilesSet);
+        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
         const result = new DiscoveryResult(tests, testSuites, impactedTests,
             repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
