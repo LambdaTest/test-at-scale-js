@@ -109,8 +109,8 @@ export class Util {
         return files
     }
 
-    static getTestStatus(status: string): TestStatus{
-        switch (status){
+    static getTestStatus(status: string): TestStatus {
+        switch (status) {
             case TestStatus.Passed:
                 return TestStatus.Passed
             case TestStatus.Failed:
@@ -120,7 +120,7 @@ export class Util {
             default:
                 return TestStatus.Skipped
         }
-    }  
+    }
 
     // TODO: Fix blocklist.json generated in nucleus so that the following works recursively instead of string
     static getBlocklistedSource(locator: Locator): string | null {
@@ -176,33 +176,39 @@ export class Util {
     static escapeRegExp(str: string): string {
         return str.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'); // $& means the whole matched string
     }
-
-    static findImpactedTests(
-        testsDepsMap: TestsDependenciesMap | null,
+    static async findImpactedTests(
+        testFiles: string[],
         tests: Test[],
         changedFilesSet: Set<string>
-    ): ID[] {
-        const impactedTests = new Set<ID>();
-        // skip if not diff exists or testFiles do not have testDeps
-        if (changedFilesSet.size === 0 || testsDepsMap === null) {
-            return [];
+    ): Promise<[ID[], boolean]>  {
+        // 
+        let executeAllTests = false;
+        // skip listing of dependencies if no changed files or smart mode not available
+        if (changedFilesSet.size === 0 || !await this.isSmartSelectAvailable()) {
+            executeAllTests = true;
+            return [[], executeAllTests];
         }
+        const impactedTests = new Set<ID>();
+        const testsDepsMap = await this.listDependencies(testFiles);
         for (const test of tests) {
             if (changedFilesSet.has(test.filepath)) {
                 impactedTests.add(test.testID);
                 // no need to check dependencies if test file changed.
                 continue;
             }
-            const testDeps = testsDepsMap.get(path.resolve(test.filepath)) ?? new Set();
-            for (const changedFile of changedFilesSet) {
-                if (testDeps.has(changedFile)) {
-                    impactedTests.add(test.testID);
+            if (testsDepsMap) {
+                const testDeps = testsDepsMap.get(path.resolve(test.filepath)) ?? new Set();
+                for (const changedFile of changedFilesSet) {
+                    if (testDeps.has(changedFile)) {
+                        impactedTests.add(test.testID);
+                    }
                 }
             }
         }
 
-        return Array.from(impactedTests);
+        return [Array.from(impactedTests), executeAllTests];
     }
+
 
     static validateLocatorConfig(inputConfig: InputConfig): void {
         if (inputConfig.mode != TestExecutionMode.Combined &&
@@ -210,14 +216,14 @@ export class Util {
             throw Error("Invalid mode value in locator config file")
         }
         for (const locator of inputConfig.locators) {
-            if (locator == undefined || locator.locator.length == 0) { 
-               throw Error("missing locator in config file")
+            if (locator == undefined || locator.locator.length == 0) {
+                throw Error("missing locator in config file")
             }
             if (locator.numberofexecutions == undefined) {
                 throw Error("missing numberofexecutions in config file")
             }
             if (isNaN(locator.numberofexecutions)) {
-               throw Error("Invalid numberofexecutions")
+                throw Error("Invalid numberofexecutions")
             }
         }
     }
@@ -229,23 +235,23 @@ export class Util {
 
     static createLocatorSet(config: InputConfig): LocatorSet[] {
         const locatorSet: LocatorSet[] = []
-        const locatorMap: Map<number, string[]> = new  Map<number, string[]>() 
-        switch(config.mode) {
-        case TestExecutionMode.Individual:
-            for (const locator of config.locators) {
-                locatorSet.push(new LocatorSet(locator.numberofexecutions, [locator.locator]))
-            }
-            break;
-        case TestExecutionMode.Combined:    
-            for (const locator of config.locators) {
-                const record = locatorMap.get(locator.numberofexecutions) ?? [];
-                record.push(locator.locator)
-                locatorMap.set(locator.numberofexecutions,record)    
-            }
-            for(const [n, locators] of locatorMap){
-                locatorSet.push(new LocatorSet(n, locators))
-            }
-            break;
+        const locatorMap: Map<number, string[]> = new Map<number, string[]>()
+        switch (config.mode) {
+            case TestExecutionMode.Individual:
+                for (const locator of config.locators) {
+                    locatorSet.push(new LocatorSet(locator.numberofexecutions, [locator.locator]))
+                }
+                break;
+            case TestExecutionMode.Combined:
+                for (const locator of config.locators) {
+                    const record = locatorMap.get(locator.numberofexecutions) ?? [];
+                    record.push(locator.locator)
+                    locatorMap.set(locator.numberofexecutions, record)
+                }
+                for (const [n, locators] of locatorMap) {
+                    locatorSet.push(new LocatorSet(n, locators))
+                }
+                break;
         }
         return locatorSet
     }
@@ -374,7 +380,7 @@ export class Util {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private static async execSmartMode(input: any): Promise<any> {
         const command = process.env.SMART_BINARY as string;
-        if (!this.isSmartSelectAvailable()) {
+        if (!await this.isSmartSelectAvailable()) {
             return null;
         }
         try {
@@ -383,13 +389,13 @@ export class Util {
             await exec(command + ' --inputFile=' + SMART_INPUT_FILE);
             return await JSONStream.parse(fs.createReadStream(SMART_OUT_FILE));
             // eslint-disable-next-line no-empty
-        } catch (err) { 
+        } catch (err) {
             console.error('error while running smart selection mode', err)
         }
         return null;
     }
 
-    private static async isSmartSelectAvailable(): Promise<boolean> {
+    static async isSmartSelectAvailable(): Promise<boolean> {
         const command = process.env.SMART_BINARY as string;
         if (!command) {
             this.smartSelectAvailable = false;

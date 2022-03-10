@@ -34,10 +34,11 @@ class MochaRunner implements TestRunner {
     private _blocklistedSuites: TestSuiteResult[] = [];
     private _testlocator: Set<string> = new Set<string>();
 
-    createMochaInstance(): Mocha{
+    createMochaInstance(): Mocha {
         const argv = parser(hideBin(process.argv), { array: ['diff', "locator"] });
         const mocha = new Mocha(this.getFilteredConfigs(argv));
-        if (mocha.options.require !== undefined) {            const cwd = process.cwd();
+        if (mocha.options.require !== undefined) {
+            const cwd = process.cwd();
             module.paths.push(cwd, path.join(cwd, 'node_modules'));
             if (!(mocha.options.require instanceof Array)) {
                 mocha.options.require = [mocha.options.require];
@@ -64,9 +65,11 @@ class MochaRunner implements TestRunner {
         const branch = process.env.BRANCH_NAME as string;
         const testFilesGlob = argv.pattern as string | string[];
         const testFiles = glob.sync(testFilesGlob).map(file => path.resolve(file));
+        if (testFiles.length === 0) {
+            return new DiscoveryResult([], [], [], repoID, commitID, buildID, taskID, orgID, branch);
+        }
         const changedFiles = argv.diff as Array<string>;
         const changedFilesSet = new Set(changedFiles);
-        const testsDepsMap = await Util.listDependencies(testFiles);
 
         for (const filename of testFiles) {
             mocha.addFile(filename);
@@ -80,10 +83,10 @@ class MochaRunner implements TestRunner {
         // pass root suite
         this.listTestsAndTestSuites(mocha.suite, tests, testSuites);
         Util.handleDuplicateTests(tests);
-        const impactedTests = Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
+        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testFiles, tests, changedFilesSet);
 
         const result = new DiscoveryResult(tests, testSuites, impactedTests,
-            repoID, commitID, buildID, taskID, orgID, branch, !!argv.diff, parallelism);
+            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
         Util.fillTotalTests(result);
         if (postTestListEndpoint) {
             try {
@@ -93,14 +96,13 @@ class MochaRunner implements TestRunner {
                 throw new RunnerException(err.stack);
             }
         }
-
         return result;
     }
 
-    async execute(testFilesGlob: string | string[], locators: string[]=[]): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], locators: string[] = []): Promise<ExecutionResult> {
         const mocha = this.createMochaInstance()
         const testRunTask = new Task<void>();
-        
+
         this._testlocator = new Set<string>(locators);
 
         this.extendNativeRunner();
@@ -162,7 +164,7 @@ class MochaRunner implements TestRunner {
             locators = Util.getLocatorsConfigFromFile(locatorFile)
             const locatorSet = Util.createLocatorSet(locators)
             for (const set of locatorSet) {
-                for (let i=1; i<=set.numberofexecutions; i++) {
+                for (let i = 1; i <= set.numberofexecutions; i++) {
                     const result = await this.execute(testFilesGlob, set.locators)
                     executionResults.push(result)
                 }
