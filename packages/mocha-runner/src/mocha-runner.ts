@@ -137,10 +137,13 @@ class MochaRunner implements TestRunner {
             results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
                 this._testlocator, this._blockTestLocators);
         }
-        mocha.dispose();
         // clearing blockTests and suites for next run
         this._blockTests = [];
         this._blockedSuites = [];
+        // removing testfile from cache to reload testfiles when new mocha instance is created
+        for (const testFile of testFilesToProcessList) {
+            delete require.cache[testFile];
+        } 
         return results;
     }
 
