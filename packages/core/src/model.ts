@@ -379,7 +379,7 @@ export type LocatorConfig = {
 
 export type LocatorProperties = {
     source: string | null
-    type: string
+    status: string
     isBlocked: boolean
 }
 export class InputConfig {

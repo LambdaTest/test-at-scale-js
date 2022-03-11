@@ -53,7 +53,7 @@ export class CustomReporter implements jasmine.CustomReporter {
         const locator = Util.getLocator(filename, this.ancestorTitles, result.description);
         const blockTest = Util.getBlockTestLocatorProperties(locator);
         if (blockTest.isBlocked) {
-            result.status = Util.getTestStatus(blockTest.type)
+            result.status = Util.getTestStatus(blockTest.status)
         }
         const testSuite = new TestSuiteResult(
             crypto
@@ -94,7 +94,7 @@ export class CustomReporter implements jasmine.CustomReporter {
         const blockTest = Util.getBlockTestLocatorProperties(locator);
         // if test is blocked change status as per type i.e blocklisted or quarantined or skipped etc
         if (blockTest.isBlocked) {
-            result.status = Util.getTestStatus(blockTest.type);
+            result.status = Util.getTestStatus(blockTest.status);
         } else { 
            // get test status
            result.status = Util.getTestStatus(result.status)

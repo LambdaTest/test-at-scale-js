@@ -35,7 +35,7 @@ export class Util {
 
     static smartSelectAvailable?: boolean;
 
-    private static blockTestMap: { [key: string]: { source: string, locator: string, type: string }[]; } = {};
+    private static blockTestMap: { [key: string]: { source: string, locator: string, status: string }[]; } = {};
     private static blockTestMapInitialized = false;
 
     static getIdentifier(fileName: string, testName: string): string {
@@ -67,12 +67,12 @@ export class Util {
      *     "<filename>": {
      *         "source": "api",
      *         "locator": "<filename>##<test-suite-name>##<test-case-name>"
-     *         "type": blocklisted
+     *         "status": "blocklisted"
      *     },
      *     "<filename2>": {
      *         "source": "yml",
      *         "locator": "<filename2>##<test-suite-name-2>##<test-case-name-2>"
-     *         "type": quarantined
+     *         "status": "quarantined"
      *     }
      * }
      */
@@ -91,7 +91,7 @@ export class Util {
                             this.blockTestMap[relativeFilePath].push({
                                 source: blocktest.source || 'yml',
                                 locator: locator_parts.join(LocatorSeparator),
-                                type:blocktest.type
+                                status:blocktest.status
                             });
                         }
                     }
@@ -128,7 +128,8 @@ export class Util {
         }
     }  
 
-    static getBlockTestLocatorsForFile(relFilePath: string): { source: string, locator: string, type: string }[] {
+    static getBlockTestLocatorsForFile(relFilePath: string): 
+    { source: string, locator: string, status: string }[] {
         const blockTestLocators = this.loadBlockTests()[relFilePath];
         if (!blockTestLocators) {
             return [];
@@ -136,12 +137,15 @@ export class Util {
         return blockTestLocators;
     }
 
-    static getBlockTestLocatorProperties(getBlockTestLocatorProperties: Locator): LocatorProperties {
+    static getBlockTestLocatorProperties(locator: Locator): LocatorProperties {
         // outermost locator is the relative filepath
-        const relFilePath = getBlockTestLocatorProperties.current;
+        const relFilePath = locator.current;
         const blockTestLocators = this.getBlockTestLocatorsForFile(relFilePath);
-        const blockTestLocator = blockTestLocators.find((item) => { return Locator.from(item.locator)?.liesCompletelyIn(getBlockTestLocatorProperties); });
-        return {isBlocked:!!blockTestLocator, type:blockTestLocator?.type ?? "", source:blockTestLocator?.source ?? null}
+        const blockTestLocator = blockTestLocators.find((item) => {
+            return Locator.from(item.locator)?.liesCompletelyIn(locator); });
+        return {isBlocked:!!blockTestLocator, 
+            status:blockTestLocator?.status ?? "",
+            source:blockTestLocator?.source ?? null}
     }
 
     static async makeApiRequestPost(url: string, data: DiscoveryResult | ExecutionResults): Promise<void> {
@@ -232,7 +236,7 @@ export class Util {
             break;
         case TestExecutionMode.Combined:    
             for (const locator of config.locators) {
-                let record = locatorMap.get(locator.numberofexecutions) ?? [];
+                const record = locatorMap.get(locator.numberofexecutions) ?? [];
                 record.push(locator.locator)
                 locatorMap.set(locator.numberofexecutions,record)    
             }

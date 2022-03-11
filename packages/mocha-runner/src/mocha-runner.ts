@@ -132,12 +132,12 @@ class MochaRunner implements TestRunner {
         Util.handleDuplicateTests(results.testResults);
         if (this._testlocator.size > 0) {
             results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
-                this._testlocator, this._blockTestLocators)
+                this._testlocator, this._blockTestLocators);
         }
-        mocha.dispose()
+        mocha.dispose();
         // clearing blockTests and suites for next run
-        this._blockTests.splice(0, this._blockTests.length)
-        this._blockedSuites.splice(0, this._blockedSuites.length)
+        this._blockTests = [];
+        this._blockedSuites = [];
         return results;
     }
 
@@ -270,7 +270,7 @@ class MochaRunner implements TestRunner {
                             const testResult = MochaHelper.transformMochaTestAsTestResult(
                                 test,
                                 new Date(),
-                                Util.getTestStatus(blockTest.type)
+                                Util.getTestStatus(blockTest.status)
                             );
                             this._blockTestLocators.add(testResult.locator.toString());
                             this._blockTests.push(testResult);
@@ -283,7 +283,7 @@ class MochaRunner implements TestRunner {
                         const testResult = MochaHelper.transformMochaTestAsTestResult(
                             test,
                             new Date(),
-                            Util.getTestStatus(blockTest.type)
+                            Util.getTestStatus(blockTest.status)
                         );
                         this._blockTestLocators.add(testResult.locator.toString());
                         this._blockTests.push(testResult);
@@ -306,7 +306,7 @@ class MochaRunner implements TestRunner {
                     const suiteResult = MochaHelper.transformMochaSuiteAsSuiteResult(
                         childSuite,
                         new Date(),
-                        Util.getTestStatus(blockTest.type)
+                        Util.getTestStatus(blockTest.status)
                     );
                     this._blockedSuites.push(suiteResult);
                 }

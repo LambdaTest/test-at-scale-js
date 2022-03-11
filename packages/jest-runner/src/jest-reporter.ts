@@ -49,12 +49,12 @@ class JestReporter {
         }
 
         const filename = test.path;
-        // append block testResults
+        // append blocked testResults
         testResult.testResults.forEach((jestTestResult) => {
             const locator = Util.getLocator(filename, jestTestResult.ancestorTitles, jestTestResult.title);
             const blockTest = Util.getBlockTestLocatorProperties(locator)
             if (blockTest.isBlocked) {
-                this.testResults.push(this.toTASTestResult(jestTestResult, Util.getTestStatus(blockTest.type)));
+                this.testResults.push(this.toTASTestResult(jestTestResult, Util.getTestStatus(blockTest.status)));
             } else {
                 this.testResults.push(this.toTASTestResult(jestTestResult, Util.getTestStatus(jestTestResult.status)));
             }
@@ -138,7 +138,7 @@ class JestReporter {
                 .digest("hex");
             const suiteParams = this.getSuiteParams(suiteID, duration, status, specStartTime);
             if (blockSuite.isBlocked) {
-                suiteParams.status = Util.getTestStatus(blockSuite.type);
+                suiteParams.status = Util.getTestStatus(blockSuite.status);
             }
             const testSuite = new TASTestSuiteResult(
                 suiteID,

@@ -140,9 +140,6 @@ class JestRunner implements TestRunner {
                     executionResult.testSuiteResults)
             }
         }
-        for (const test of executionResult.testResults) {
-            console.log(test.locator.toString())
-        }
         return executionResult;
     }
     async executeTests(argv: parser.Arguments): Promise<ExecutionResults> {
@@ -229,7 +226,6 @@ class JestRunner implements TestRunner {
                 let parts = loc.child ? loc.child.toString().split(LocatorSeparator) : [];
                 // parts = [file.js, testSuite1, testSuite2, testName]
                 parts = parts.filter((part) => part.length > 0);
-
                 if (parts.length > 0) {
                     const testFullName = parts.join(" ");
                     // testRegex = (^testSuite1 testSuite2 testName$)
