@@ -1,0 +1,35 @@
+name: Custom Runners
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Set Env
+        run: |
+          echo "BOTNAME=Custom Runners bot ${GITHUB_REF_SLUG}" >> $GITHUB_ENV
+
+      - name: Checkout Code
+        uses: actions/checkout@v2.4.0
+
+      - name: Build and Release
+        run: yarn install && yarn build && yarn publish
+
+      - name: 'Send alert to slack'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+          author_name: ${{ env.BOTNAME }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
