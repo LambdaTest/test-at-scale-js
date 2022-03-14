@@ -119,7 +119,7 @@ export class DiscoveryResult {
     taskID: ID;
     orgID: ID;
     branch: string;
-    diff: boolean;
+    executeAllTests: boolean;
     parallelism: number;
     constructor(tests: Test[],
         testSuites: TestSuite[],
@@ -130,7 +130,7 @@ export class DiscoveryResult {
         taskID: ID,
         orgID: ID,
         branch: string,
-        diff?: boolean,
+        executeAllTests?: boolean,
         parallelism?: number) {
         this.tests = tests;
         this.testSuites = testSuites;
@@ -141,7 +141,7 @@ export class DiscoveryResult {
         this.orgID = orgID;
         this.branch = branch
         this.impactedTests = impactedTests
-        this.diff = diff ? diff : false;
+        this.executeAllTests = executeAllTests ? executeAllTests : false;
         this.parallelism = parallelism ? parallelism : 0;
     }
 }
