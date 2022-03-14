@@ -18,7 +18,6 @@ import {
     Test,
     TestResult,
     TestRunner,
-    TestStatus,
     TestSuite,
     TestSuiteResult,
     Util,
@@ -29,9 +28,9 @@ import { CustomRunner, MochaHelper } from "./helper";
 
 class MochaRunner implements TestRunner {
 
-    private _blocklistedTests: TestResult[] = [];
-    private _blockListedLocators: Set<string> = new Set<string>();
-    private _blocklistedSuites: TestSuiteResult[] = [];
+    private _blockTests: TestResult[] = [];
+    private _blockTestLocators: Set<string> = new Set<string>();
+    private _blockedSuites: TestSuiteResult[] = [];
     private _testlocator: Set<string> = new Set<string>();
 
     createMochaInstance(): Mocha{
@@ -128,14 +127,17 @@ class MochaRunner implements TestRunner {
             runnerWithResults.testResults ?? [],
             runnerWithResults.testSuiteResults ?? []
         );
-        results.testResults = results.testResults.concat(this._blocklistedTests);
-        results.testSuiteResults = results.testSuiteResults.concat(this._blocklistedSuites);
+        results.testResults = results.testResults.concat(this._blockTests);
+        results.testSuiteResults = results.testSuiteResults.concat(this._blockedSuites);
         Util.handleDuplicateTests(results.testResults);
         if (this._testlocator.size > 0) {
             results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
-                this._testlocator, this._blockListedLocators)
+                this._testlocator, this._blockTestLocators);
         }
-        mocha.dispose()
+        mocha.dispose();
+        // clearing blockTests and suites for next run
+        this._blockTests = [];
+        this._blockedSuites = [];
         return results;
     }
 
@@ -258,28 +260,33 @@ class MochaRunner implements TestRunner {
                 MochaHelper.getParentSuites(test, parentSuites);
                 parentSuites.reverse();
                 const locator = Util.getLocator(filename, parentSuites, test.title ?? "");
-                const blockListed = Util.isBlocklistedLocator(locator);
-                const testResult = MochaHelper.transformMochaTestAsTestResult(
-                    test,
-                    new Date(),
-                    TestStatus.BlockListed
-                );
+                const blockTest = Util.getBlockTestLocatorProperties(locator);
                 if (this._testlocator.size > 0) {
-                    // if locators exist and not blocklisted then only add in filter tests.
+                    // if locators exist and not blocked then only add in filter tests.
                     if (this._testlocator.has(locator.toString())) {
-                        if (!blockListed) {
+                        if (!blockTest.isBlocked) {
                             filteredTests.push(test);
                         } else {
-                            this._blockListedLocators.add(testResult.locator.toString());
-                            this._blocklistedTests.push(testResult);
+                            const testResult = MochaHelper.transformMochaTestAsTestResult(
+                                test,
+                                new Date(),
+                                Util.getTestStatus(blockTest.status)
+                            );
+                            this._blockTestLocators.add(testResult.locator.toString());
+                            this._blockTests.push(testResult);
                         }
                     }
                 } else {
                     // if no test locators specified, then we will execute all 
-                    // and filter out blocklisted ones
-                    if (blockListed) {
-                        this._blockListedLocators.add(testResult.locator.toString());
-                        this._blocklistedTests.push(testResult);
+                    // and filter out blocked ones
+                    if (blockTest.isBlocked) {
+                        const testResult = MochaHelper.transformMochaTestAsTestResult(
+                            test,
+                            new Date(),
+                            Util.getTestStatus(blockTest.status)
+                        );
+                        this._blockTestLocators.add(testResult.locator.toString());
+                        this._blockTests.push(testResult);
                     } else {
                         filteredTests.push(test);
                     }
@@ -294,13 +301,14 @@ class MochaRunner implements TestRunner {
                 MochaHelper.getParentSuites(childSuite, parentSuites);
                 parentSuites.reverse();
                 const locator = Util.getLocator(filename, parentSuites, childSuite.title ?? "");
-                if (Util.isBlocklistedLocator(locator)) {
+                const blockTest = Util.getBlockTestLocatorProperties(locator)
+                if (blockTest.isBlocked) {
                     const suiteResult = MochaHelper.transformMochaSuiteAsSuiteResult(
                         childSuite,
                         new Date(),
-                        TestStatus.BlockListed
+                        Util.getTestStatus(blockTest.status)
                     );
-                    this._blocklistedSuites.push(suiteResult);
+                    this._blockedSuites.push(suiteResult);
                 }
                 this.filterSpecs(childSuite);
             }
