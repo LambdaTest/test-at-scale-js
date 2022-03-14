@@ -48,6 +48,22 @@ Monorepo consisting of separate packages for each javascript testing framework m
 
 Use `lerna` [commands](https://github.com/lerna/lerna/tree/main/commands/add#lernaadd).
 
+### Building it locally with test-at-scale's nucleus image
+In order to use it (or test it) locally with [test-at-scale's](https://github.com/LambdaTest/test-at-scale) nucleus image, create an npm package zip using command `npm pack` at root of this repo and make the following changes in `nucleus/Dockerfile` (of test-at-scale repo):
+
+Replace
+```
+RUN npm i --global-style --legacy-peer-deps \
+    @lambdatest/test-at-scale-jasmine-runner@~0.1.0 \
+    @lambdatest/test-at-scale-mocha-runner@~0.1.0 \
+    @lambdatest/test-at-scale-jest-runner@~0.1.0
+```
+with
+```
+COPY <dir_containing_zip>/lambdatest-1.0.0.tgz .
+RUN npm i --global-style --legacy-peer-deps lambdatest-1.0.0.tgz
+```
+
 ## Used By
 
 This project is used by:

@@ -181,8 +181,8 @@ export class Task<T = void> {
 export class TestResult extends Test {
     duration: number;
     status: TestStatus;
-    blocklist: boolean;
-    blocklistSource: string | null;
+    blocked: boolean;
+    blockTestSource: string | null;
     start_time: string | null;
     end_time: string | null;
     failureMessage: string | null;
@@ -196,16 +196,16 @@ export class TestResult extends Test {
         locator: Locator,
         duration: number,
         status: TestStatus,
-        blocklist: boolean,
-        blocklistSource: string | null,
+        blocked: boolean,
+        blockTestSource: string | null,
         startTime: Date | null,
         failureMessage: string | null,
     ) {
         super(id, _detail, title, suiteID, commitID, "", locator);
         this.duration = duration;
         this.status = status;
-        this.blocklist = blocklist;
-        this.blocklistSource = blocklistSource;
+        this.blocked = blocked;
+        this.blockTestSource = blockTestSource;
         if (this.status !== TestStatus.Failed && this.status !== TestStatus.Passed) {
             // skip metrics allocation by setting startTime to null
             startTime = null;
@@ -225,8 +225,8 @@ export class TestResult extends Test {
             Locator.from(jsonResult.locator) as Locator,
             jsonResult.duration,
             jsonResult.status,
-            jsonResult.blocklist,
-            jsonResult.blocklistSource,
+            jsonResult.blocked,
+            jsonResult.blockTestSource,
             jsonResult.start_time ? new Date(jsonResult.start_time) : null,
             jsonResult.failureMessage,
         );
@@ -237,7 +237,8 @@ export enum TestStatus {
     Passed = 'passed',
     Failed = 'failed',
     Skipped = 'skipped',
-    BlockListed = 'blocklisted'
+    BlockListed = 'blocklisted',
+    Quarantined = 'quarantined'
 }
 
 export enum TestExecutionMode {
@@ -248,8 +249,8 @@ export enum TestExecutionMode {
 export class TestSuiteResult extends TestSuite {
     duration: number;
     status: TestStatus;
-    blocklist: boolean;
-    blocklistSource: string | null;
+    blocked: boolean;
+    blockTestSource: string | null;
     start_time: string | null;
     end_time: string | null;
 
@@ -259,15 +260,15 @@ export class TestSuiteResult extends TestSuite {
         parentSuiteID: ID | null,
         duration: number,
         status: TestStatus,
-        blocklist: boolean,
-        blocklistSource: string | null,
+        blocked: boolean,
+        blockTestSource: string | null,
         startTime: Date | null
     ) {
         super(id, suiteName, parentSuiteID);
         this.duration = duration;
         this.status = status;
-        this.blocklist = blocklist;
-        this.blocklistSource = blocklistSource;
+        this.blocked = blocked;
+        this.blockTestSource = blockTestSource;
         this.start_time = startTime ? startTime.toISOString() : null;
         this.end_time = startTime ? (new Date(startTime.getTime() + duration)).toISOString() : null;
     }
@@ -279,8 +280,8 @@ export class TestSuiteResult extends TestSuite {
             jsonResult.parentSuiteID,
             jsonResult.duration,
             jsonResult.status,
-            jsonResult.blocklist,
-            jsonResult.blocklistSource,
+            jsonResult.blocked,
+            jsonResult.blockTestSource,
             jsonResult.start_time ? new Date(jsonResult.start_time) : null
         );
     }
@@ -376,6 +377,11 @@ export type LocatorConfig = {
     numberofexecutions: number   
 }
 
+export type LocatorProperties = {
+    source: string | null
+    status: string
+    isBlocked: boolean
+}
 export class InputConfig {
     mode: string
     locators:LocatorConfig[]

@@ -19,7 +19,8 @@ import {
     TestSuite,
     InputConfig,
     TestExecutionMode,
-    LocatorSet
+    LocatorSet,
+    LocatorProperties
 } from './model';
 import {
     DEFAULT_API_TIMEOUT,
@@ -34,8 +35,8 @@ export class Util {
 
     static smartSelectAvailable?: boolean;
 
-    private static blocklistMap: { [key: string]: { source: string, locator: string }[]; } = {};
-    private static blocklistMapInitialized = false;
+    private static blockTestMap: { [key: string]: { source: string, locator: string, status: string }[]; } = {};
+    private static blockTestMapInitialized = false;
 
     static getIdentifier(fileName: string, testName: string): string {
         const relFilePath = path.relative(this.REPO_ROOT, fileName);
@@ -60,42 +61,45 @@ export class Util {
     }
 
     /**
-     * Loads blocklisted tests by reading a file at path specified by env var BLOCKLISTED_TESTS_FILE.
+     * Loads blocked tests by reading a file at path specified by env var BLOCK_TESTS_FILE.
      * This works on the assumption that the format of JSON stored in file is in the following format:
      * {
      *     "<filename>": {
      *         "source": "api",
      *         "locator": "<filename>##<test-suite-name>##<test-case-name>"
+     *         "status": "blocklisted"
      *     },
      *     "<filename2>": {
      *         "source": "yml",
      *         "locator": "<filename2>##<test-suite-name-2>##<test-case-name-2>"
+     *         "status": "quarantined"
      *     }
      * }
      */
-    private static loadBlocklistedTests() {
-        const blockListedFilePath = process.env.BLOCKLISTED_TESTS_FILE as string;
-        if (!this.blocklistMapInitialized) {
-            if (!!blockListedFilePath && fs.existsSync(blockListedFilePath)) {
-                const data = JSON.parse(fs.readFileSync(blockListedFilePath).toString());
+    private static loadBlockTests() {
+        const blockTestFilePath = process.env.BLOCK_TESTS_FILE as string;
+        if (!this.blockTestMapInitialized) {
+            if (!!blockTestFilePath && fs.existsSync(blockTestFilePath)) {
+                const data = JSON.parse(fs.readFileSync(blockTestFilePath).toString());
                 for (const k in data) {
                     const relativeFilePath = path.relative(this.REPO_ROOT, k);
-                    this.blocklistMap[relativeFilePath] = [];
-                    for (const blocklist of data[k]) {
-                        if (blocklist.locator) {
-                            const locator_parts = blocklist.locator.split(LocatorSeparator);
+                    this.blockTestMap[relativeFilePath] = [];
+                    for (const blocktest of data[k]) {
+                        if (blocktest.locator) {
+                            const locator_parts = blocktest.locator.split(LocatorSeparator);
                             locator_parts[0] = relativeFilePath;
-                            this.blocklistMap[relativeFilePath].push({
-                                source: blocklist.source || 'yml',
+                            this.blockTestMap[relativeFilePath].push({
+                                source: blocktest.source || 'yml',
                                 locator: locator_parts.join(LocatorSeparator),
+                                status:blocktest.status
                             });
                         }
                     }
                 }
             }
-            this.blocklistMapInitialized = true;
+            this.blockTestMapInitialized = true;
         }
-        return this.blocklistMap;
+        return this.blockTestMap;
     }
 
     static getFilesFromTestLocators(locators: Set<string>): Set<string> {
@@ -117,38 +121,31 @@ export class Util {
                 return TestStatus.Failed
             case TestStatus.BlockListed:
                 return TestStatus.BlockListed
+            case TestStatus.Quarantined:
+                 return TestStatus.Quarantined    
             default:
                 return TestStatus.Skipped
         }
     }
 
-    // TODO: Fix blocklist.json generated in nucleus so that the following works recursively instead of string
-    static getBlocklistedSource(locator: Locator): string | null {
-        const locatorStr = locator.toString();
-        const blocklistLocators = this.loadBlocklistedTests()[locatorStr.split(LocatorSeparator)[0]];
-        if (!blocklistLocators) {
-            return null;
-        }
-        const matches = blocklistLocators.filter((item) => locatorStr.startsWith(item.locator));
-        if (matches.length === 0) {
-            return null;
-        }
-        return matches[0]['source'];
-    }
-
-    static getBlocklistedLocatorsForFile(relFilePath: string): { source: string, locator: string }[] {
-        const blocklistLocators = this.loadBlocklistedTests()[relFilePath];
-        if (!blocklistLocators) {
+    static getBlockTestLocatorsForFile(relFilePath: string): 
+    { source: string, locator: string, status: string }[] {
+        const blockTestLocators = this.loadBlockTests()[relFilePath];
+        if (!blockTestLocators) {
             return [];
         }
-        return blocklistLocators;
+        return blockTestLocators;
     }
 
-    static isBlocklistedLocator(locator: Locator): boolean {
+    static getBlockTestLocatorProperties(locator: Locator): LocatorProperties {
         // outermost locator is the relative filepath
         const relFilePath = locator.current;
-        const blocklistedLocators = this.getBlocklistedLocatorsForFile(relFilePath);
-        return !!blocklistedLocators.find((item) => { return Locator.from(item.locator)?.liesCompletelyIn(locator); });
+        const blockTestLocators = this.getBlockTestLocatorsForFile(relFilePath);
+        const blockTestLocator = blockTestLocators.find((item) => {
+            return Locator.from(item.locator)?.liesCompletelyIn(locator); });
+        return {isBlocked:!!blockTestLocator, 
+            status:blockTestLocator?.status ?? "",
+            source:blockTestLocator?.source ?? null}
     }
 
     static async makeApiRequestPost(url: string, data: DiscoveryResult | ExecutionResults): Promise<void> {
@@ -226,6 +223,7 @@ export class Util {
             }
         }
     }
+  
     static getLocatorsConfigFromFile(filePath: string): InputConfig {
         const inputConfig = JSON.parse(fs.readFileSync(filePath).toString());
         this.validateLocatorConfig(inputConfig)
@@ -263,15 +261,16 @@ export class Util {
             if (existingCount) {
                 test.testID = crypto.createHash("md5").update(`${testID}-${existingCount}`).digest("hex");
             }
+
             testIdsCollisionMap.set(testID, existingCount + 1);
         });
     }
     static filterTestResultsByTestLocator(testResults: TestResult[],
         locators: Set<string>,
-        blocklistLocators: Set<string>): TestResult[] {
+        blocktestLocators: Set<string>): TestResult[] {
         const filteredTestResults = [];
         for (const result of testResults) {
-            if (locators.has(result.locator.toString()) || blocklistLocators.has(result.locator.toString())) {
+            if (locators.has(result.locator.toString()) || blocktestLocators.has(result.locator.toString())) {
                 filteredTestResults.push(result)
             }
         }

@@ -18,10 +18,10 @@ import {
     Util,
     Validations,
     Task,
-    InputConfig
+    InputConfig,
 } from "@lambdatest/test-at-scale-core";
 import Jasmine from "jasmine";
-import { CustomReporter } from "./jasmine-reporter";
+import { CustomReporter } from "./jasmine-reporter"
 
 class JasmineRunner implements TestRunner {
 
@@ -68,7 +68,7 @@ class JasmineRunner implements TestRunner {
 
     async execute(testFilesGlob: string | string[], config: string, locators: string[] = []): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators)
-        const blockListedLocators = new Set<string>()
+        const blockTestLocators = new Set<string>()
         const entityIdFilenameMap = new Map<number, string>();
         const runTask = new Task<ExecutionResult>();
 
@@ -97,9 +97,9 @@ class JasmineRunner implements TestRunner {
             const specIdsToRun: number[] = [];
 
             this.fetchSpecIdsToRun(rootSuite, specIdsToRun, entityIdFilenameMap,
-                testLocators, blockListedLocators);
-
-            if (specIdsToRun.length == 0) {
+                testLocators, blockTestLocators);
+            
+                if (specIdsToRun.length == 0) {
                 // pushing an invalid specID because if we pass empty array, it runs all specs
                 specIdsToRun.push(-1);
             }
@@ -110,7 +110,7 @@ class JasmineRunner implements TestRunner {
             Util.handleDuplicateTests(executionResult.testResults);
             if (locators.length > 0) {
                 executionResult.testResults = Util.filterTestResultsByTestLocator(executionResult.testResults,
-                    testLocators, blockListedLocators)
+                    testLocators, blockTestLocators)
                 if (executionResult.testSuiteResults.length > 0) {
                     executionResult.testSuiteResults = Util.filterTestSuiteResults(executionResult.testResults,
                         executionResult.testSuiteResults)
@@ -288,7 +288,7 @@ class JasmineRunner implements TestRunner {
         specIdsToRun: number[],
         entityIdFilenameMap: Map<number, string>,
         testLocators: Set<string>,
-        blockListedTestLocators: Set<string>,
+        blockTestLocators: Set<string>,
         ancestorTitles: string[] = [],
     ) {
         for (const child of currentSuite.children) {
@@ -297,23 +297,23 @@ class JasmineRunner implements TestRunner {
                 const childSuite = child as jasmine.Suite;
                 ancestorTitles.push(child.description);
                 this.fetchSpecIdsToRun(childSuite, specIdsToRun, entityIdFilenameMap,
-                    testLocators, blockListedTestLocators, ancestorTitles);
+                    testLocators, blockTestLocators, ancestorTitles);
                 ancestorTitles.pop();
             } else {
                 // child is a Spec
                 const filename = entityIdFilenameMap.get(child.id) ?? "";
                 const locator = Util.getLocator(filename, ancestorTitles, child.description);
-                const blockListed = Util.isBlocklistedLocator(locator)
+                const blockTest = Util.getBlockTestLocatorProperties(locator)
                 if (testLocators.size > 0) {
                     if (testLocators.has(locator.toString())) {
-                        if (!blockListed) {
+                        if (!blockTest.isBlocked) {
                             specIdsToRun.push(child.id);
                         } else {
-                            // keep list of blacklisted locators, so as to not filter in final results
-                            blockListedTestLocators.add(locator.toString());
+                            // keep list of block test locators, so as to not filter in final results
+                            blockTestLocators.add(locator.toString());
                         }
                     }
-                } else if (!blockListed) {
+                } else if (!blockTest.isBlocked) {
                     specIdsToRun.push(child.id);
                 }
 
