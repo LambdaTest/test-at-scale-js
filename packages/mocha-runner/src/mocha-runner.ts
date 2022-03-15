@@ -140,10 +140,18 @@ class MochaRunner implements TestRunner {
         // clearing blockTests and suites for next run
         this._blockTests = [];
         this._blockedSuites = [];
-        // removing testfile from cache to reload testfiles when new mocha instance is created
-        for (const testFile of testFilesToProcessList) {
-            delete require.cache[testFile];
-        } 
+        try {
+            mocha.dispose()
+        }
+        catch(err)
+        {
+            // implies user is using mocha version < 7.2
+            console.warn("Using mocha < 7.2", err);
+            // removing testfile from cache to reload testfiles when new mocha instance is created
+            for (const testFile of testFilesToProcessList) {
+                delete require.cache[testFile];
+            } 
+        }
         return results;
     }
 
