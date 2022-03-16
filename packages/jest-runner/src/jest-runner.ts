@@ -298,6 +298,5 @@ class JestRunner implements TestRunner {
         console.error(e.stack);
         process.exit(-1);
     }
-    console.log("done");
     process.exit(0);
 })();

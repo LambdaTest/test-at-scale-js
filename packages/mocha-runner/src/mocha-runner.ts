@@ -121,8 +121,7 @@ class MochaRunner implements TestRunner {
         for (const filename of testFilesToProcessList) {
             mocha.addFile(filename);
         }
-        const runnerWithResults: CustomRunner = mocha.run((failures: number) => {
-            console.error("# of failed tests:", failures);
+        const runnerWithResults: CustomRunner = mocha.run(() => {
             testRunTask.resolve();
         });
         await testRunTask.promise;
@@ -340,7 +339,7 @@ class MochaRunner implements TestRunner {
             return opts;
         } catch (err) {
             // implies user is using mocha version < 6
-            console.warn("Using mocha < 6", err);
+            console.info("Using mocha < 6");
             const optsFilePath = argv.config ?? "./test/mocha.opts";
             if (fs.existsSync(optsFilePath)) {
                 // Following code translates newlines separated mocha opts file
@@ -376,7 +375,6 @@ class MochaRunner implements TestRunner {
         console.error(e.stack);
         process.exit(-1);
     }
-    console.log("done");
     process.exit(0);
 })();
 

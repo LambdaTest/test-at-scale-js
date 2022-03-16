@@ -47,73 +47,49 @@ export class MochaReporter extends Mocha.reporters.Base {
         this.hookUsersReporter(runner, options);
 
         runner.on(EVENT_SUITE_BEGIN, () => {
-            try {
-                this._suiteStartTime = new Date();
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._suiteStartTime = new Date();
         });
 
         runner.on(EVENT_SUITE_END, (suite: Mocha.Suite) => {
-            try {
-                if (!suite.root) {
-                    const underlyingTestStates: string[] = [];
-                    suite.eachTest((test) => {
-                        underlyingTestStates.push(test.state as string);
-                    });
-                    let suiteState = TestStatus.Passed;
-                    if (underlyingTestStates.find((item) => item === TestStatus.Failed)) {
-                        suiteState = TestStatus.Failed;
-                    }
-                    this._suiteResults.push(
-                        MochaHelper.transformMochaSuiteAsSuiteResult(suite, this._suiteStartTime, suiteState));
+            if (!suite.root) {
+                const underlyingTestStates: string[] = [];
+                suite.eachTest((test) => {
+                    underlyingTestStates.push(test.state as string);
+                });
+                let suiteState = TestStatus.Passed;
+                if (underlyingTestStates.find((item) => item === TestStatus.Failed)) {
+                    suiteState = TestStatus.Failed;
                 }
-                if (suite.file && global.__coverage__) {
-                    this._coverageMap.set(suite.file, global.__coverage__);
-                }
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
+                this._suiteResults.push(
+                    MochaHelper.transformMochaSuiteAsSuiteResult(suite, this._suiteStartTime, suiteState));
+            }
+            if (suite.file && global.__coverage__) {
+                this._coverageMap.set(suite.file, global.__coverage__);
             }
         });
 
         runner.on(EVENT_TEST_BEGIN, () => {
-            try {
-                this._specStartTime = new Date();
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._specStartTime = new Date();
         });
 
         runner.on(EVENT_TEST_PASS, (test: Mocha.Test) => {
-            try {
-                this._testResults.push(
-                    MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Passed));
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._testResults.push(
+                MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Passed));
         });
 
         /**
          * Event emitted when a test doesn't define a body or it is marked as skipped ie it.skip()
          */
         runner.on(EVENT_TEST_PENDING, (test: Mocha.Test) => {
-            try {
-                this._testResults.push(
-                    MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Skipped));
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._testResults.push(
+                MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Skipped));
         });
 
         runner.on(EVENT_TEST_FAIL, (test: Mocha.Test, err: Error) => {
-            try {
-                const failureMessage = (err.message || err.stack) ?? 'unknown error';
+            const failureMessage = (err.message || err.stack) ?? 'unknown error';
                 this._testResults.push(
                     MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, 
                         TestStatus.Failed, failureMessage));
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
         });
 
         runner.once(EVENT_RUN_END, () => {

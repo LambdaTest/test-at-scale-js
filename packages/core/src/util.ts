@@ -158,7 +158,6 @@ export class Util {
                 maxBodyLength: Infinity,
                 maxContentLength: Infinity
             });
-            console.log(data);
         } catch (err) {
             if (axios.isAxiosError(err)) {
                 const e = err as AxiosError;
