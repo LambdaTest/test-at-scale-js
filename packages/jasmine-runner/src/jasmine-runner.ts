@@ -320,7 +320,7 @@ class JasmineRunner implements TestRunner {
         }
     }
 
-    private async jasmineExecute(jasmineObj: Jasmine, specIdsToRun: number[]) {
+    private async jasmineExecute(jasmineObj: Jasmine, specIdsToRun: number[]): Promise<void> {
         try {
             jasmineObj.loadHelpers();
             if (!jasmineObj.defaultReporterConfigured) {
@@ -329,7 +329,7 @@ class JasmineRunner implements TestRunner {
         } catch (err) {
             console.error(err);
         }
-        jasmineObj.env.execute(specIdsToRun as unknown as jasmine.Suite[]);
+        return jasmineObj.env.execute(specIdsToRun as unknown as jasmine.Suite[]);
     }
 }
 

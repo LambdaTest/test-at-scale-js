@@ -32,8 +32,7 @@ const {
     STATE_STOPPED: 'stopped'
 };
 
-export class MochaReporter extends Mocha.reporters.Base {
-    private static RUNNER_ERROR = "Mocha Runner Error";
+class MochaReporter extends Mocha.reporters.Base {
 
     private _testResults: TestResult[] = [];
     private _suiteResults: TestSuiteResult[] = [];
