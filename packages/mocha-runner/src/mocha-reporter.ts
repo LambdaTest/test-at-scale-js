@@ -33,7 +33,6 @@ const {
 };
 
 class MochaReporter extends Mocha.reporters.Base {
-    private static RUNNER_ERROR = "Mocha Runner Error";
 
     private _testResults: TestResult[] = [];
     private _suiteResults: TestSuiteResult[] = [];
@@ -41,78 +40,55 @@ class MochaReporter extends Mocha.reporters.Base {
     private _suiteStartTime = new Date();
     private _coverageMap: Map<string, typeof global.__coverage__> = new Map<string, typeof global.__coverage__>();
 
-    constructor(runner: CustomRunner) {
+    constructor(runner: CustomRunner, options: Mocha.MochaOptions) {
 
-        super(runner);
+        super(runner, options);
+        this.hookUsersReporter(runner, options);
 
         runner.on(EVENT_SUITE_BEGIN, () => {
-            try {
-                this._suiteStartTime = new Date();
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._suiteStartTime = new Date();
         });
 
         runner.on(EVENT_SUITE_END, (suite: Mocha.Suite) => {
-            try {
-                if (!suite.root) {
-                    const underlyingTestStates: string[] = [];
-                    suite.eachTest((test) => {
-                        underlyingTestStates.push(test.state as string);
-                    });
-                    let suiteState = TestStatus.Passed;
-                    if (underlyingTestStates.find((item) => item === TestStatus.Failed)) {
-                        suiteState = TestStatus.Failed;
-                    }
-                    this._suiteResults.push(
-                        MochaHelper.transformMochaSuiteAsSuiteResult(suite, this._suiteStartTime, suiteState));
+            if (!suite.root) {
+                const underlyingTestStates: string[] = [];
+                suite.eachTest((test) => {
+                    underlyingTestStates.push(test.state as string);
+                });
+                let suiteState = TestStatus.Passed;
+                if (underlyingTestStates.find((item) => item === TestStatus.Failed)) {
+                    suiteState = TestStatus.Failed;
                 }
-                if (suite.file && global.__coverage__) {
-                    this._coverageMap.set(suite.file, global.__coverage__);
-                }
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
+                this._suiteResults.push(
+                    MochaHelper.transformMochaSuiteAsSuiteResult(suite, this._suiteStartTime, suiteState));
+            }
+            if (suite.file && global.__coverage__) {
+                this._coverageMap.set(suite.file, global.__coverage__);
             }
         });
 
         runner.on(EVENT_TEST_BEGIN, () => {
-            try {
-                this._specStartTime = new Date();
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._specStartTime = new Date();
         });
 
         runner.on(EVENT_TEST_PASS, (test: Mocha.Test) => {
-            try {
-                this._testResults.push(
-                    MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Passed));
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._testResults.push(
+                MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Passed));
         });
 
         /**
          * Event emitted when a test doesn't define a body or it is marked as skipped ie it.skip()
          */
         runner.on(EVENT_TEST_PENDING, (test: Mocha.Test) => {
-            try {
-                this._testResults.push(
-                    MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Skipped));
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
+            this._testResults.push(
+                MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, TestStatus.Skipped));
         });
 
         runner.on(EVENT_TEST_FAIL, (test: Mocha.Test, err: Error) => {
-            try {
-                const failureMessage = (err.message || err.stack) ?? 'unknown error';
+            const failureMessage = (err.message || err.stack) ?? 'unknown error';
                 this._testResults.push(
                     MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, 
                         TestStatus.Failed, failureMessage));
-            } catch (err) {
-                console.error(MochaReporter.RUNNER_ERROR, err);
-            }
         });
 
         runner.once(EVENT_RUN_END, () => {
@@ -129,6 +105,40 @@ class MochaReporter extends Mocha.reporters.Base {
                 }
             }
         });
+    }
+
+    private hookUsersReporter(runner: Mocha.Runner, options: Mocha.MochaOptions) {
+        let reporter: string | Mocha.ReporterConstructor | undefined;
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const reporters = require("mocha/lib/reporters");
+
+        if (typeof options.reporter === 'function') {
+            reporter = options.reporter;
+        } else {
+            options.reporter = options.reporter || 'spec';
+
+            if (reporters[options.reporter]) {
+                reporter = reporters[options.reporter];
+            }
+            // Try to load reporters from process.cwd() and node_modules
+            if (!reporter) {
+                let foundReporter: string | undefined;
+                try {
+                    foundReporter = require.resolve(options.reporter);
+                    reporter = require(foundReporter);
+                } catch (err) {
+                    if (foundReporter) {
+                        throw err;
+                    }
+                    // Try to load reporters from a cwd-relative path
+                    reporter = require(path.resolve(options.reporter));
+                }
+            }
+
+            if (typeof reporter === 'function') {
+                new reporter(runner, options);
+            }
+        }
     }
 }
 

@@ -129,9 +129,8 @@ export class CustomReporter implements jasmine.CustomReporter {
         this.executionResults.testResults.push(test);
     }
 
-    jasmineDone(doneInfo: jasmine.JasmineDoneInfo): void {
+    jasmineDone(): void {
         const CODE_COVERAGE_DIR = process.env.CODE_COVERAGE_DIR as string;
-        console.log(doneInfo);
         if (CODE_COVERAGE_DIR) {
             for (const [filename, coverage] of this._coverageMap) {
                 const coverageFileName = `${CODE_COVERAGE_DIR}/${filename.replace(/\//g, '')}/coverage-final.json`;
