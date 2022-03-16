@@ -104,8 +104,8 @@ class JasmineRunner implements TestRunner {
                 specIdsToRun.push(-1);
             }
             const reporter = new CustomReporter(runTask, entityIdFilenameMap);
-            jasmine.getEnv().addReporter(reporter);
-            await jasmine.getEnv().execute(specIdsToRun as unknown as jasmine.Suite[]);
+            jasmineObj.addReporter(reporter);
+            await this.jasmineExecute(jasmineObj, specIdsToRun);
             const executionResult = await runTask.promise;
             Util.handleDuplicateTests(executionResult.testResults);
             if (locators.length > 0) {
@@ -187,7 +187,6 @@ class JasmineRunner implements TestRunner {
             await jasmineObj.loadHelpers();
         }
 
-        jasmineObj.env.clearReporters();
         jasmineObj.randomizeTests(false);
         return jasmineObj;
     }
@@ -319,6 +318,18 @@ class JasmineRunner implements TestRunner {
 
             }
         }
+    }
+
+    private async jasmineExecute(jasmineObj: Jasmine, specIdsToRun: number[]) {
+        try {
+            jasmineObj.loadHelpers();
+            if (!jasmineObj.defaultReporterConfigured) {
+                jasmineObj.configureDefaultReporter({ showColors: jasmineObj.showingColors });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        jasmineObj.env.execute(specIdsToRun as unknown as jasmine.Suite[]);
     }
 }
 

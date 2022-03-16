@@ -32,7 +32,7 @@ const {
     STATE_STOPPED: 'stopped'
 };
 
-class MochaReporter extends Mocha.reporters.Base {
+export class MochaReporter extends Mocha.reporters.Base {
     private static RUNNER_ERROR = "Mocha Runner Error";
 
     private _testResults: TestResult[] = [];
@@ -41,9 +41,10 @@ class MochaReporter extends Mocha.reporters.Base {
     private _suiteStartTime = new Date();
     private _coverageMap: Map<string, typeof global.__coverage__> = new Map<string, typeof global.__coverage__>();
 
-    constructor(runner: CustomRunner) {
+    constructor(runner: CustomRunner, options: Mocha.MochaOptions) {
 
-        super(runner);
+        super(runner, options);
+        this.hookUsersReporter(runner, options);
 
         runner.on(EVENT_SUITE_BEGIN, () => {
             try {
@@ -129,6 +130,40 @@ class MochaReporter extends Mocha.reporters.Base {
                 }
             }
         });
+    }
+
+    private hookUsersReporter(runner: Mocha.Runner, options: Mocha.MochaOptions) {
+        let reporter: string | Mocha.ReporterConstructor | undefined;
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const reporters = require("mocha/lib/reporters");
+
+        if (typeof options.reporter === 'function') {
+            reporter = options.reporter;
+        } else {
+            options.reporter = options.reporter || 'spec';
+
+            if (reporters[options.reporter]) {
+                reporter = reporters[options.reporter];
+            }
+            // Try to load reporters from process.cwd() and node_modules
+            if (!reporter) {
+                let foundReporter: string | undefined;
+                try {
+                    foundReporter = require.resolve(options.reporter);
+                    reporter = require(foundReporter);
+                } catch (err) {
+                    if (foundReporter) {
+                        throw err;
+                    }
+                    // Try to load reporters from a cwd-relative path
+                    reporter = require(path.resolve(options.reporter));
+                }
+            }
+
+            if (typeof reporter === 'function') {
+                new reporter(runner, options);
+            }
+        }
     }
 }
 

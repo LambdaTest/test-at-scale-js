@@ -197,16 +197,20 @@ class JestRunner implements TestRunner {
             useStderr: true,
             silent: true,
             config: argv.config,
-            reporters: reporters,
             collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE
         };
         if (inExecutionPhase) {
+            const { globalConfig, configs } = await readConfigs(jestArgv, projectRoots);
             if (semver.lt(getVersion(), "24.0.0")) {
                 jestArgv.setupTestFrameworkScriptFile = SETUP_AFTER_ENV_FILE;
             } else {
-                const { configs } = await readConfigs(jestArgv, projectRoots);
                 const config = configs[0];
                 jestArgv.setupFilesAfterEnv = [SETUP_AFTER_ENV_FILE].concat(config.setupFilesAfterEnv);
+            }
+            if (globalConfig.reporters === undefined) {
+                jestArgv.reporters = reporters.concat(["default"]);
+            } else {
+                jestArgv.reporters = reporters.concat(globalConfig.reporters as string[]);
             }
         }
         await runCLI(jestArgv, projectRoots);
