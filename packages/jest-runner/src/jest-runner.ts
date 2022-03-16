@@ -212,6 +212,8 @@ class JestRunner implements TestRunner {
             } else {
                 jestArgv.reporters = reporters.concat(globalConfig.reporters as string[]);
             }
+        } else {
+            jestArgv.reporters = reporters;
         }
         await runCLI(jestArgv, projectRoots);
     }
