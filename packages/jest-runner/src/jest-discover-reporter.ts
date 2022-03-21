@@ -83,6 +83,10 @@ class JestDiscoverReporter {
                 this.testSuites.set(testSuite.suiteID, testSuite);
             }
         });
+        
+        if (testResult && testResult.failureMessage) {
+            process.stderr.write(testResult.failureMessage);
+        }
     }
 
     async onRunComplete(): Promise<void> {

@@ -194,8 +194,6 @@ class JestRunner implements TestRunner {
             _: testFilesToProcessList,
             runInBand: true,
             testNamePattern: testNamePattern,
-            useStderr: true,
-            silent: true,
             config: argv.config,
             collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE
         };
@@ -214,8 +212,15 @@ class JestRunner implements TestRunner {
             }
         } else {
             jestArgv.reporters = reporters;
+            jestArgv.silent = true;
         }
-        await runCLI(jestArgv, projectRoots);
+        const {results, globalConfig} = await runCLI(jestArgv, projectRoots);
+        const code = !results || results.success ? 0 : globalConfig.testFailureExitCode; // Only exit if needed
+        process.on('exit', () => {
+            if (typeof code === 'number' && code !== 0) {
+                process.exitCode = code;
+            }
+        });
     }
 
     private getBlockTestAndTestRegex(testFiles: string[], testLocators: Set<string>): [string, Set<string>] {
