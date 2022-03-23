@@ -26,6 +26,7 @@ import {
 } from "@lambdatest/test-at-scale-core";
 import { CustomRunner, MochaHelper } from "./helper";
 
+const originalRun = Mocha.Runner.prototype.run;
 class MochaRunner implements TestRunner {
 
     private _blockTests: TestResult[] = [];
@@ -251,7 +252,6 @@ class MochaRunner implements TestRunner {
     }
 
     private extendNativeRunner() {
-        const originalRun = Mocha.Runner.prototype.run;
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const _self = this;
         // This is the hook point where we can randomizee, specify order
