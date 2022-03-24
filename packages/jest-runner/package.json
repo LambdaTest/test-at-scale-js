@@ -1,6 +1,6 @@
 {
   "name": "@lambdatest/test-at-scale-jest-runner",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "Jest custom runner",
   "author": "Saurabh Prakash <saurabhp@lambdatest.com>",
   "homepage": "https://github.com/LambdaTest/test-at-scale-js#readme",
