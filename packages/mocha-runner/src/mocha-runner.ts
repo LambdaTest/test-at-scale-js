@@ -18,7 +18,6 @@ import {
     Test,
     TestResult,
     TestRunner,
-    TestStatus,
     TestSuite,
     TestSuiteResult,
     Util,
@@ -27,17 +26,19 @@ import {
 } from "@lambdatest/test-at-scale-core";
 import { CustomRunner, MochaHelper } from "./helper";
 
+const originalRun = Mocha.Runner.prototype.run;
 class MochaRunner implements TestRunner {
 
-    private _blocklistedTests: TestResult[] = [];
-    private _blockListedLocators: Set<string> = new Set<string>();
-    private _blocklistedSuites: TestSuiteResult[] = [];
+    private _blockTests: TestResult[] = [];
+    private _blockTestLocators: Set<string> = new Set<string>();
+    private _blockedSuites: TestSuiteResult[] = [];
     private _testlocator: Set<string> = new Set<string>();
 
-    createMochaInstance(): Mocha{
+    createMochaInstance(): Mocha {
         const argv = parser(hideBin(process.argv), { array: ['diff', "locator"] });
         const mocha = new Mocha(this.getFilteredConfigs(argv));
-        if (mocha.options.require !== undefined) {            const cwd = process.cwd();
+        if (mocha.options.require !== undefined) {
+            const cwd = process.cwd();
             module.paths.push(cwd, path.join(cwd, 'node_modules'));
             if (!(mocha.options.require instanceof Array)) {
                 mocha.options.require = [mocha.options.require];
@@ -64,9 +65,11 @@ class MochaRunner implements TestRunner {
         const branch = process.env.BRANCH_NAME as string;
         const testFilesGlob = argv.pattern as string | string[];
         const testFiles = glob.sync(testFilesGlob).map(file => path.resolve(file));
+        if (testFiles.length === 0) {
+            return new DiscoveryResult([], [], [], repoID, commitID, buildID, taskID, orgID, branch);
+        }
         const changedFiles = argv.diff as Array<string>;
         const changedFilesSet = new Set(changedFiles);
-        const testsDepsMap = await Util.listDependencies(testFiles);
 
         for (const filename of testFiles) {
             mocha.addFile(filename);
@@ -77,13 +80,14 @@ class MochaRunner implements TestRunner {
             mocha['loadFiles']();
         }
 
+        const testsDepsMap = await Util.listDependencies(testFiles);
         // pass root suite
         this.listTestsAndTestSuites(mocha.suite, tests, testSuites);
         Util.handleDuplicateTests(tests);
-        const impactedTests = Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
+        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
         const result = new DiscoveryResult(tests, testSuites, impactedTests,
-            repoID, commitID, buildID, taskID, orgID, branch, !!argv.diff, parallelism);
+            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
         Util.fillTotalTests(result);
         if (postTestListEndpoint) {
             try {
@@ -93,14 +97,13 @@ class MochaRunner implements TestRunner {
                 throw new RunnerException(err.stack);
             }
         }
-
         return result;
     }
 
-    async execute(testFilesGlob: string | string[], locators: string[]=[]): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], locators: string[] = []): Promise<ExecutionResult> {
         const mocha = this.createMochaInstance()
         const testRunTask = new Task<void>();
-        
+
         this._testlocator = new Set<string>(locators);
 
         this.extendNativeRunner();
@@ -119,8 +122,7 @@ class MochaRunner implements TestRunner {
         for (const filename of testFilesToProcessList) {
             mocha.addFile(filename);
         }
-        const runnerWithResults: CustomRunner = mocha.run((failures: number) => {
-            console.error("# of failed tests:", failures);
+        const runnerWithResults: CustomRunner = mocha.run(() => {
             testRunTask.resolve();
         });
         await testRunTask.promise;
@@ -128,14 +130,26 @@ class MochaRunner implements TestRunner {
             runnerWithResults.testResults ?? [],
             runnerWithResults.testSuiteResults ?? []
         );
-        results.testResults = results.testResults.concat(this._blocklistedTests);
-        results.testSuiteResults = results.testSuiteResults.concat(this._blocklistedSuites);
+        results.testResults = results.testResults.concat(this._blockTests);
+        results.testSuiteResults = results.testSuiteResults.concat(this._blockedSuites);
         Util.handleDuplicateTests(results.testResults);
         if (this._testlocator.size > 0) {
             results.testResults = Util.filterTestResultsByTestLocator(results.testResults,
-                this._testlocator, this._blockListedLocators)
+                this._testlocator, this._blockTestLocators);
         }
-        mocha.dispose()
+        // clearing blockTests and suites for next run
+        this._blockTests = [];
+        this._blockedSuites = [];
+        try {
+            mocha.dispose()
+        }
+        catch(err) {
+            // implies user is using mocha version < 7.2
+            // removing testfile from cache to reload testfiles when new mocha instance is created
+            for (const testFile of testFilesToProcessList) {
+                delete require.cache[testFile];
+            } 
+        }
         return results;
     }
 
@@ -162,7 +176,7 @@ class MochaRunner implements TestRunner {
             locators = Util.getLocatorsConfigFromFile(locatorFile)
             const locatorSet = Util.createLocatorSet(locators)
             for (const set of locatorSet) {
-                for (let i=1; i<=set.numberofexecutions; i++) {
+                for (let i = 1; i <= set.numberofexecutions; i++) {
                     const result = await this.execute(testFilesGlob, set.locators)
                     executionResults.push(result)
                 }
@@ -238,7 +252,6 @@ class MochaRunner implements TestRunner {
     }
 
     private extendNativeRunner() {
-        const originalRun = Mocha.Runner.prototype.run;
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const _self = this;
         // This is the hook point where we can randomizee, specify order
@@ -258,28 +271,33 @@ class MochaRunner implements TestRunner {
                 MochaHelper.getParentSuites(test, parentSuites);
                 parentSuites.reverse();
                 const locator = Util.getLocator(filename, parentSuites, test.title ?? "");
-                const blockListed = Util.isBlocklistedLocator(locator);
-                const testResult = MochaHelper.transformMochaTestAsTestResult(
-                    test,
-                    new Date(),
-                    TestStatus.BlockListed
-                );
+                const blockTest = Util.getBlockTestLocatorProperties(locator);
                 if (this._testlocator.size > 0) {
-                    // if locators exist and not blocklisted then only add in filter tests.
+                    // if locators exist and not blocked then only add in filter tests.
                     if (this._testlocator.has(locator.toString())) {
-                        if (!blockListed) {
+                        if (!blockTest.isBlocked) {
                             filteredTests.push(test);
                         } else {
-                            this._blockListedLocators.add(testResult.locator.toString());
-                            this._blocklistedTests.push(testResult);
+                            const testResult = MochaHelper.transformMochaTestAsTestResult(
+                                test,
+                                new Date(),
+                                Util.getTestStatus(blockTest.status)
+                            );
+                            this._blockTestLocators.add(testResult.locator.toString());
+                            this._blockTests.push(testResult);
                         }
                     }
                 } else {
                     // if no test locators specified, then we will execute all 
-                    // and filter out blocklisted ones
-                    if (blockListed) {
-                        this._blockListedLocators.add(testResult.locator.toString());
-                        this._blocklistedTests.push(testResult);
+                    // and filter out blocked ones
+                    if (blockTest.isBlocked) {
+                        const testResult = MochaHelper.transformMochaTestAsTestResult(
+                            test,
+                            new Date(),
+                            Util.getTestStatus(blockTest.status)
+                        );
+                        this._blockTestLocators.add(testResult.locator.toString());
+                        this._blockTests.push(testResult);
                     } else {
                         filteredTests.push(test);
                     }
@@ -294,13 +312,14 @@ class MochaRunner implements TestRunner {
                 MochaHelper.getParentSuites(childSuite, parentSuites);
                 parentSuites.reverse();
                 const locator = Util.getLocator(filename, parentSuites, childSuite.title ?? "");
-                if (Util.isBlocklistedLocator(locator)) {
+                const blockTest = Util.getBlockTestLocatorProperties(locator)
+                if (blockTest.isBlocked) {
                     const suiteResult = MochaHelper.transformMochaSuiteAsSuiteResult(
                         childSuite,
                         new Date(),
-                        TestStatus.BlockListed
+                        Util.getTestStatus(blockTest.status)
                     );
-                    this._blocklistedSuites.push(suiteResult);
+                    this._blockedSuites.push(suiteResult);
                 }
                 this.filterSpecs(childSuite);
             }
@@ -320,7 +339,7 @@ class MochaRunner implements TestRunner {
             return opts;
         } catch (err) {
             // implies user is using mocha version < 6
-            console.warn("Using mocha < 6", err);
+            console.info("Using mocha < 6");
             const optsFilePath = argv.config ?? "./test/mocha.opts";
             if (fs.existsSync(optsFilePath)) {
                 // Following code translates newlines separated mocha opts file
@@ -356,7 +375,6 @@ class MochaRunner implements TestRunner {
         console.error(e.stack);
         process.exit(-1);
     }
-    console.log("done");
     process.exit(0);
 })();
 

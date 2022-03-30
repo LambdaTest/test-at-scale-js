@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { TIMINGS_FILE } from "./constants";
+import { TASDate as Date } from "@lambdatest/test-at-scale-core";
 
 const timings: string[] = [];
 

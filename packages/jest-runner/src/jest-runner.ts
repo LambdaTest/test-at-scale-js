@@ -81,12 +81,12 @@ class JestRunner implements TestRunner {
                 testsDepsMap.set(k, new Set<string>(v as string[]));
             }
         }
-        const impactedTests = Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
+        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
         const discoveryResult = new DiscoveryResult(tests,
             testSuites,
             impactedTests,
-            repoID, commitID, buildID, taskID, orgID, branch, !!argv.diff, parallelism);
+            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
         if (cleanup) {
             await fs.promises.rm(TAS_DIRECTORY, { recursive: true });
         }
@@ -101,10 +101,9 @@ class JestRunner implements TestRunner {
         return discoveryResult;
     }
 
-
     async execute(testFilesGlob: string| string[], cleanup: string, locators: string[]=[]): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators);
-        
+
         let testFilesToProcess: Set<string> = new Set();
 
         if (testLocators.size == 0) {
@@ -119,7 +118,7 @@ class JestRunner implements TestRunner {
         if (testFilesToProcessList.length == 0) {
             return new ExecutionResult();
         }
-        const [regex, blockListedLocators] = this.getBlockListedTestAndTestRegex(testFilesToProcessList, testLocators)
+        const [regex, blockTestLocators] = this.getBlockTestAndTestRegex(testFilesToProcessList, testLocators)
 
         await this.runJest(
             testFilesToProcessList,
@@ -135,7 +134,7 @@ class JestRunner implements TestRunner {
         Util.handleDuplicateTests(executionResult.testResults);
         if (locators.length > 0) {
             executionResult.testResults = Util.filterTestResultsByTestLocator(executionResult.testResults,
-                testLocators, blockListedLocators)
+                testLocators, blockTestLocators)
             if (executionResult.testSuiteResults.length > 0) {
                 executionResult.testSuiteResults = Util.filterTestSuiteResults(executionResult.testResults,
                     executionResult.testSuiteResults)
@@ -166,7 +165,7 @@ class JestRunner implements TestRunner {
             locators = Util.getLocatorsConfigFromFile(locatorFile)
             const locatorSet = Util.createLocatorSet(locators)
             for (const set of locatorSet) {
-                for (let i=1; i<=set.numberofexecutions; i++) {
+                for (let i = 1; i <= set.numberofexecutions; i++) {
                     const result = await this.execute(testFilesGlob, cleanup, set.locators)
                     executionResults.push(result)
                 }
@@ -175,7 +174,7 @@ class JestRunner implements TestRunner {
             // run all tests if locator file is not present
             const result = await this.execute(testFilesGlob, cleanup)
             executionResults.push(result)
-        } 
+        }
         if (postTestResultsEndpoint) {
             await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }
@@ -195,27 +194,38 @@ class JestRunner implements TestRunner {
             _: testFilesToProcessList,
             runInBand: true,
             testNamePattern: testNamePattern,
-            useStderr: true,
-            silent: true,
             config: argv.config,
-            reporters: reporters,
             collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE
         };
         if (inExecutionPhase) {
+            const { globalConfig, configs } = await readConfigs(jestArgv, projectRoots);
             if (semver.lt(getVersion(), "24.0.0")) {
                 jestArgv.setupTestFrameworkScriptFile = SETUP_AFTER_ENV_FILE;
             } else {
-                const { configs } = await readConfigs(jestArgv, projectRoots);
                 const config = configs[0];
                 jestArgv.setupFilesAfterEnv = [SETUP_AFTER_ENV_FILE].concat(config.setupFilesAfterEnv);
             }
+            if (globalConfig.reporters === undefined) {
+                jestArgv.reporters = reporters.concat(["default"]);
+            } else {
+                jestArgv.reporters = reporters.concat(globalConfig.reporters as string[]);
+            }
+        } else {
+            jestArgv.reporters = reporters;
+            jestArgv.silent = true;
         }
-        await runCLI(jestArgv, projectRoots);
+        const {results, globalConfig} = await runCLI(jestArgv, projectRoots);
+        const code = !results || results.success ? 0 : globalConfig.testFailureExitCode; // Only exit if needed
+        process.on('exit', () => {
+            if (typeof code === 'number' && code !== 0) {
+                process.exitCode = code;
+            }
+        });
     }
 
-    private getBlockListedTestAndTestRegex(testFiles: string[], testLocators: Set<string>): [string, Set<string>] {
+    private getBlockTestAndTestRegex(testFiles: string[], testLocators: Set<string>): [string, Set<string>] {
         const filteredTestsRegexes: string[] = [];
-        const blockListedTestLocators = new Set<string>()
+        const blockTestLocators = new Set<string>()
 
         if (testLocators.size > 0) {
             for (const locator of testLocators) {
@@ -223,37 +233,36 @@ class JestRunner implements TestRunner {
                 if (!loc) {
                     continue;
                 }
-                const blockListed = Util.isBlocklistedLocator(loc)
+                const blockTest = Util.getBlockTestLocatorProperties(loc)
                 let parts = loc.child ? loc.child.toString().split(LocatorSeparator) : [];
                 // parts = [file.js, testSuite1, testSuite2, testName]
                 parts = parts.filter((part) => part.length > 0);
-
                 if (parts.length > 0) {
                     const testFullName = parts.join(" ");
                     // testRegex = (^testSuite1 testSuite2 testName$)
                     const testRegex = "(^" + Util.escapeRegExp(testFullName) + "$)";
-                    if (!blockListed) {
+                    if (!blockTest.isBlocked) {
                         filteredTestsRegexes.push(testRegex);
                     } else {
-                        blockListedTestLocators.add(loc.toString());
+                        blockTestLocators.add(loc.toString());
                     }
                 }
             }
-            // if all tests in the locators were blockListed then we will execute nothing
+            // if all tests in the locators were blocked then we will execute nothing
             if (filteredTestsRegexes.length == 0) {
-                return [MATCH_NOTHING_REGEX, blockListedTestLocators];
+                return [MATCH_NOTHING_REGEX, blockTestLocators];
             }
             // (^testSuite1 testSuite2 testName$)|(^testSuite3 testSuite4 testName2$)
-            return [filteredTestsRegexes.join("|"), blockListedTestLocators];
+            return [filteredTestsRegexes.join("|"), blockTestLocators];
         }
         // in case no test locators specified we will execute all tests 
-        // but first filter out blockListed ones
-        const blockListedTestsRegexes: string[] = [];
+        // but first filter out blocktest ones
+        const blockTestsRegexes: string[] = [];
         for (const testFile of testFiles) {
             const relFilePath = path.relative(Util.REPO_ROOT, testFile);
-            const blockListedLocators = Util.getBlocklistedLocatorsForFile(relFilePath).map((item) => item.locator);
-            for (const blockListedLocator of blockListedLocators) {
-                let parts = blockListedLocator.split(LocatorSeparator);
+            const blockTestLocators = Util.getBlockTestLocatorsForFile(relFilePath).map((item) => item.locator);
+            for (const blockTestLocator of blockTestLocators) {
+                let parts = blockTestLocator.split(LocatorSeparator);
                 // parts = [file.js, testSuite1, testSuite2, testName]
                 parts = parts.filter((part) => part.length > 0);
                 parts.shift();
@@ -261,17 +270,17 @@ class JestRunner implements TestRunner {
                     const testFullName = parts.join(" ");
                     // testRegex = (^testSuite1 testSuite2 testName)
                     const testRegex = "(^" + Util.escapeRegExp(testFullName) + ")";
-                    blockListedTestsRegexes.push(testRegex);
+                    blockTestsRegexes.push(testRegex);
                 }
             }
         }
-        // if only blocklisted tests exist, then return blocklist regex
-        if (blockListedTestsRegexes.length > 0) {
+        // if only blocked tests exist, then return block tests regex
+        if (blockTestsRegexes.length > 0) {
             // ^(?!(^testSuite1 testSuite2 testName)|(^testSuite3 testSuite4 testName2)).*$
-            return ["^(?!" + blockListedTestsRegexes.join("|") + ").*$", blockListedTestLocators];
+            return ["^(?!" + blockTestsRegexes.join("|") + ").*$", blockTestLocators];
         }
 
-        return ["", blockListedTestLocators];
+        return ["", blockTestLocators];
     }
 }
 
@@ -296,6 +305,5 @@ class JestRunner implements TestRunner {
         console.error(e.stack);
         process.exit(-1);
     }
-    console.log("done");
     process.exit(0);
 })();

@@ -51,9 +51,9 @@ export class CustomReporter implements jasmine.CustomReporter {
         const parentSuiteIdentifiers = suiteIdentifiers.slice(0, -1);
         const duration: number = result.duration ?? ((new Date()).getTime() - this.suiteStartTime.getTime())
         const locator = Util.getLocator(filename, this.ancestorTitles, result.description);
-        const blocklistSource = Util.getBlocklistedSource(locator);
-        if (blocklistSource) {
-            result.status = TestStatus.BlockListed;
+        const blockTest = Util.getBlockTestLocatorProperties(locator);
+        if (blockTest.isBlocked) {
+            result.status = Util.getTestStatus(blockTest.status)
         }
         const testSuite = new TestSuiteResult(
             crypto
@@ -69,8 +69,8 @@ export class CustomReporter implements jasmine.CustomReporter {
                 : null,
             duration,
             result.status as TestStatus,
-            !!blocklistSource,
-            blocklistSource,
+            blockTest.isBlocked,
+            blockTest.source,
             this.suiteStartTime
         )
         this.executionResults.testSuiteResults.push(testSuite);
@@ -91,13 +91,14 @@ export class CustomReporter implements jasmine.CustomReporter {
             .map((suiteName) => Util.getIdentifier(filename, suiteName));
         const testIdentifier = Util.getIdentifier(filename, result.description);
         const locator = Util.getLocator(filename, this.ancestorTitles, result.description);
-        const blocklistSource = Util.getBlocklistedSource(locator);
-        // if blocklisted change status
-        if (blocklistSource) {
-            result.status = TestStatus.BlockListed;
+        const blockTest = Util.getBlockTestLocatorProperties(locator);
+        // if test is blocked change status as per type i.e blocklisted or quarantined or skipped etc
+        if (blockTest.isBlocked) {
+            result.status = Util.getTestStatus(blockTest.status);
+        } else { 
+           // get test status
+           result.status = Util.getTestStatus(result.status)
         }
-        // get test status
-        result.status = Util.getTestStatus(result.status)
         let failureMessage: string | null = null;
         if (result.status === TestStatus.Failed) {
             failureMessage = result.failedExpectations.map((failedExpectation) => failedExpectation.message).join(', ')
@@ -120,17 +121,16 @@ export class CustomReporter implements jasmine.CustomReporter {
             locator,
             duration,
             result.status as TestStatus,
-            !!blocklistSource,
-            blocklistSource,
+            blockTest.isBlocked,
+            blockTest.source,
             this.specStartTime,
             failureMessage
         );
         this.executionResults.testResults.push(test);
     }
 
-    jasmineDone(doneInfo: jasmine.JasmineDoneInfo): void {
+    jasmineDone(): void {
         const CODE_COVERAGE_DIR = process.env.CODE_COVERAGE_DIR as string;
-        console.log(doneInfo);
         if (CODE_COVERAGE_DIR) {
             for (const [filename, coverage] of this._coverageMap) {
                 const coverageFileName = `${CODE_COVERAGE_DIR}/${filename.replace(/\//g, '')}/coverage-final.json`;
