@@ -1,0 +1,63 @@
+name: Custom Runners
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+
+  Release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        label: ${{ github.event.pull_request.labels.*.name }}
+
+    steps:
+
+      - if: startsWith(matrix.label, 'release:')
+        name: Retrieving Release Type
+        run: |
+          release_type=`echo ${{matrix.label}} | awk -F':' '{print $NF}'`
+          echo "RELEASE_TYPE=${release_type}" >> $GITHUB_ENV
+          echo "Releasing: ${release_type}"
+
+      - if: startsWith(matrix.label, 'release:')
+        name: Set Env
+        run: |
+          echo "BOTNAME=Custom Runners bot ${GITHUB_REF_SLUG}" >> $GITHUB_ENV
+
+      - if: startsWith(matrix.label, 'release:')
+        name: Checkout Code
+        uses: actions/checkout@v2.4.0
+
+      - if: startsWith(matrix.label, 'release:')
+        name: Setup Github
+        run: |
+          git config --global user.email "bot@noreply.com"
+          git config --global user.name "Release Bot"
+
+      - if: startsWith(matrix.label, 'release:')
+        name: Build and Release
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - if: startsWith(matrix.label, 'release:')
+        run: yarn install && yarn build && yarn lint  && lerna publish ${{ env.RELEASE_TYPE }} --force-publish --no-verify-access -y
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 'Send alert to slack'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+          author_name: ${{ env.BOTNAME }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always() && startsWith(matrix.label, 'release:')
