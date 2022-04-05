@@ -103,7 +103,10 @@ export class CustomReporter implements jasmine.CustomReporter {
         if (result.status === TestStatus.Failed) {
             failureMessage = result.failedExpectations.map((failedExpectation) => failedExpectation.message).join(', ')
         }
-        const duration: number = result.duration ?? ((new Date()).getTime() - this.specStartTime.getTime())
+        let duration = 0;
+        if (result.status === TestStatus.Passed || result.status === TestStatus.Failed) {
+            duration = result.duration ?? ((new Date()).getTime() - this.specStartTime.getTime());
+        }
         const test = new TestResult(
             crypto
                 .createHash("md5")

@@ -32,7 +32,6 @@ class JasmineRunner implements TestRunner {
 
         Validations.validateDiscoveryEnv(argv);
         const repoID = process.env.REPO_ID as ID;
-        const parallelism = isNaN(Number(process.env.TAS_PARALLELISM)) ? 0 : Number(process.env.TAS_PARALLELISM);
         const orgID = process.env.ORG_ID as ID;
         const buildID = process.env.BUILD_ID as ID;
         const taskID = process.env.TASK_ID as ID;
@@ -54,7 +53,7 @@ class JasmineRunner implements TestRunner {
             const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
             const result = new DiscoveryResult(tests, testSuites, impactedTests,
-                repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
+                repoID, commitID, buildID, taskID, orgID, branch, executeAllTests);
             Util.fillTotalTests(result);
             if (postTestListEndpoint) {
                 await Util.makeApiRequestPost(postTestListEndpoint, result);
@@ -187,7 +186,11 @@ class JasmineRunner implements TestRunner {
             await jasmineObj.loadHelpers();
         }
 
-        jasmineObj.randomizeTests(false);
+        try {
+            jasmineObj.randomizeTests(false);
+        } catch (err) {
+            Util.noOp();
+        }
         return jasmineObj;
     }
 
@@ -327,7 +330,7 @@ class JasmineRunner implements TestRunner {
                 jasmineObj.configureDefaultReporter({ showColors: jasmineObj.showingColors });
             }
         } catch (err) {
-            console.error(err);
+            Util.noOp();
         }
         return jasmineObj.env.execute(specIdsToRun as unknown as jasmine.Suite[]);
     }

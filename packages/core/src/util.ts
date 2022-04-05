@@ -38,6 +38,8 @@ export class Util {
     private static blockTestMap: { [key: string]: { source: string, locator: string, status: string }[]; } = {};
     private static blockTestMapInitialized = false;
 
+    static noOp = (): void => { return };
+    
     static getIdentifier(fileName: string, testName: string): string {
         const relFilePath = path.relative(this.REPO_ROOT, fileName);
         return testName + ' (' + relFilePath + ')';
