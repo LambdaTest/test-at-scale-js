@@ -2,7 +2,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import type { Config } from '@jest/types';
-import { AssertionResult, Test, TestResult } from "@jest/test-result";
+import { AggregatedResult, AssertionResult, Test, TestResult } from "@jest/test-result";
 import {
     ExecutionResult,
     ID,
@@ -71,7 +71,7 @@ class JestReporter {
         this.filename = "";
     }
 
-    onRunComplete(): void {
+    onRunComplete(_: unknown, aggregatedResults: AggregatedResult): void {
         const executionResult = new ExecutionResult(
             this.testResults,
             Array.from(this.testSuiteResults.values())
@@ -80,6 +80,13 @@ class JestReporter {
         fs.mkdirSync(path.dirname(REPORT_FILE), { recursive: true });
         // Write data to file
         fs.writeFileSync(REPORT_FILE, JSON.stringify(executionResult));
+
+        const code = !aggregatedResults || aggregatedResults.success ? 0 : this._globalConfig.testFailureExitCode;
+        process.on('exit', () => {
+            if (typeof code === 'number' && code !== 0) {
+                process.exitCode = code;
+            }
+        });
     }
 
     private toTASTestResult(testCaseResult: AssertionResult, status: TASTestStatus): TASTestResult {
