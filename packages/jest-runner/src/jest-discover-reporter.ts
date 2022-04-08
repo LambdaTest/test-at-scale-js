@@ -22,6 +22,7 @@ class JestDiscoverReporter {
     private tests: TASTest[];
     private testSuites: Map<ID, TASTestSuite>;
     private testsDependenciesMap: TASTestsDependenciesMap | null;
+    private hasErrors = false;
 
     constructor(globalConfig: Config.GlobalConfig) {
         this._globalConfig = globalConfig
@@ -85,6 +86,7 @@ class JestDiscoverReporter {
         });
         
         if (testResult && testResult.failureMessage) {
+            this.hasErrors = true;
             process.stderr.write(testResult.failureMessage);
         }
     }
@@ -118,6 +120,13 @@ class JestDiscoverReporter {
             fs.createWriteStream(TESTS_DEPENDENCIES_MAP_FILE),
             JSONStream.replacer
         );
+
+        const code = !this.hasErrors ? 0 : this._globalConfig.testFailureExitCode;
+        process.on('exit', () => {
+            if (typeof code === 'number' && code !== 0) {
+                process.exitCode = code;
+            }
+        });
     }
 }
 
