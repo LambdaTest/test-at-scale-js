@@ -48,7 +48,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - if: startsWith(matrix.label, 'release:')
-        run: yarn install && yarn build && yarn lint  && lerna publish ${{ env.RELEASE_TYPE }} --force-publish --no-verify-access -y
+        run: yarn install && yarn lint  && lerna publish ${{ env.RELEASE_TYPE }} --force-publish --no-verify-access -y
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
