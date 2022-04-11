@@ -1,4 +1,4 @@
-name: Custom Runners
+name: Custom Runners Release
 
 on:
   pull_request:
