@@ -25,7 +25,7 @@
     "build:mocha": "yarn build:core && lerna run --scope=@lambdatest/test-at-scale-mocha-runner build",
     "lint": "yarn build && eslint packages/* --ext .ts",
     "clean": "lerna clean -y && lerna run clean",
-    "publish": "yarn lint && lerna publish"
+    "publish:manual": "yarn lint && lerna publish"
   },
   "workspaces": [
     "packages/*"
