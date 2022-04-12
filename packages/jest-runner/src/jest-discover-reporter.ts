@@ -8,11 +8,10 @@ import {
     ID,
     JSONStream,
     Test as TASTest,
-    TestsDependenciesMap as TASTestsDependenciesMap,
     TestSuite as TASTestSuite,
     Util
 } from "@lambdatest/test-at-scale-core";
-import { DISCOVERY_RESULT_FILE, TESTS_DEPENDENCIES_MAP_FILE } from "./constants";
+import { DISCOVERY_RESULT_FILE } from "./constants";
 
 class JestDiscoverReporter {
 
@@ -21,26 +20,17 @@ class JestDiscoverReporter {
     private _globalConfig: Config.GlobalConfig;
     private tests: TASTest[];
     private testSuites: Map<ID, TASTestSuite>;
-    private testsDependenciesMap: TASTestsDependenciesMap | null;
     private hasErrors = false;
 
     constructor(globalConfig: Config.GlobalConfig) {
         this._globalConfig = globalConfig
         this.tests = [];
         this.testSuites = new Map<ID, TASTestSuite>();
-        this.testsDependenciesMap = null;
     }
 
     async onTestResult(test: Test, testResult: TestResult): Promise<void> {
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
-        const testDeps = await Util.listDependency(test.path, Util.REPO_ROOT, false, test.context.config);
-        if (testDeps !== null) {
-            if (this.testsDependenciesMap === null) {
-                this.testsDependenciesMap = new Map<string, Set<string>>();
-            }
-            this.testsDependenciesMap.set(testDeps.testFile, new Set(testDeps.dependsOn));
-        }
 
         testResult.testResults.forEach((jestTest) => {
             const filename = test.path;
@@ -113,13 +103,6 @@ class JestDiscoverReporter {
         fs.mkdirSync(path.dirname(DISCOVERY_RESULT_FILE), { recursive: true });
         // Write data to file
         await JSONStream.stringify(discoveryResult, fs.createWriteStream(DISCOVERY_RESULT_FILE));
-
-        fs.mkdirSync(path.dirname(TESTS_DEPENDENCIES_MAP_FILE), { recursive: true });
-        await JSONStream.stringify(
-            this.testsDependenciesMap,
-            fs.createWriteStream(TESTS_DEPENDENCIES_MAP_FILE),
-            JSONStream.replacer
-        );
 
         const code = !this.hasErrors ? 0 : this._globalConfig.testFailureExitCode;
         process.on('exit', () => {
