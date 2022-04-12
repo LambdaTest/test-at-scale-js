@@ -11,7 +11,6 @@ import {
     ID,
     Locator,
     Test,
-    TestDependencies,
     TestResult,
     TestsDependenciesMap,
     TestSuiteResult,
@@ -344,21 +343,6 @@ export class Util {
         for (const suite of discoveryResult.testSuites) {
             suite.totalTests = suiteIdTestCountMap.get(suite.suiteID) ?? 0;
         }
-    }
-
-    static async listDependency(
-        testFile: string,
-        rootDir: string,
-        includeSelf = false,
-        config?: unknown,
-    ): Promise<TestDependencies | null> {
-        return await this.execSmartMode({
-            "function": "listDependency",
-            "testFile": testFile,
-            "rootDir": rootDir,
-            "includeSelf": includeSelf,
-            "config": config
-        });
     }
 
     static async listDependencies(testFiles: string[]): Promise<TestsDependenciesMap | null> {
