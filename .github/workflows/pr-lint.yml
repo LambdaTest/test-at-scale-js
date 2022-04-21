@@ -1,0 +1,17 @@
+
+name: PR Linting
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR Label Check
+        uses: docker://agilepathway/pull-request-label-checker:latest
+        with:
+          one_of: release:major,release:minor,release:patch
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
