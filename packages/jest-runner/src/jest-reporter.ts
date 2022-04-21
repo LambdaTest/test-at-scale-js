@@ -6,6 +6,7 @@ import { AggregatedResult, AssertionResult, Test, TestResult } from "@jest/test-
 import {
     ExecutionResult,
     ID,
+    JSONStream,
     TASDate as Date,
     TestResult as TASTestResult,
     TestStatus as TASTestStatus,
@@ -38,7 +39,7 @@ class JestReporter {
         this.tIndex = 0;
     }
 
-    onTestResult(test: Test, testResult: TestResult): void {
+    async onTestResult(test: Test, testResult: TestResult): Promise<void> {
         const CODE_COVERAGE_DIR = process.env.CODE_COVERAGE_DIR as string;
         try {
             this.timings = (JSON.parse(fs.readFileSync(TIMINGS_FILE, { encoding: "utf-8" })) as string[])
@@ -62,24 +63,20 @@ class JestReporter {
 
         if (CODE_COVERAGE_DIR && testResult.coverage) {
             const coverageFileName = CODE_COVERAGE_DIR + "/" + filename.replace(/\//g, '') + "/coverage-final.json"
-            // Ensure output path exists
             fs.mkdirSync(path.dirname(coverageFileName), { recursive: true });
-            // Write data to file
-            fs.writeFileSync(coverageFileName, JSON.stringify(testResult.coverage));
+            await JSONStream.stringify(testResult.coverage, fs.createWriteStream(coverageFileName));
         }
 
         this.filename = "";
     }
 
-    onRunComplete(_: unknown, aggregatedResults: AggregatedResult): void {
+    async onRunComplete(_: unknown, aggregatedResults: AggregatedResult): Promise<void> {
         const executionResult = new ExecutionResult(
             this.testResults,
             Array.from(this.testSuiteResults.values())
         );
-        // Ensure output path exists
         fs.mkdirSync(path.dirname(REPORT_FILE), { recursive: true });
-        // Write data to file
-        fs.writeFileSync(REPORT_FILE, JSON.stringify(executionResult));
+        await JSONStream.stringify(executionResult, fs.createWriteStream(REPORT_FILE));
 
         const code = !aggregatedResults || aggregatedResults.success ? 0 : this._globalConfig.testFailureExitCode;
         process.on('exit', () => {
@@ -99,7 +96,6 @@ class JestReporter {
 
         const ancestorTitles: string[] = testCaseResult.ancestorTitles;
         const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
         const filename = this.filename;
         const testIdentifier = Util.getIdentifier(filename, testCaseResult.title);
         const locator = Util.getLocator(filename, ancestorTitles, testCaseResult.title);
@@ -107,7 +103,7 @@ class JestReporter {
         const blockTest = Util.getBlockTestLocatorProperties(locator);
         let failureMessage: string | null = null;
         if (status === TASTestStatus.Failed) {
-            failureMessage = testCaseResult.failureMessages.join(', ');
+            failureMessage = testCaseResult.failureMessages.join('\n\n');
         }
         const testResult = new TASTestResult(
             crypto
@@ -122,7 +118,6 @@ class JestReporter {
                     .update(repoID + "\n" + suiteIdentifiers.join("\n"))
                     .digest("hex")
                 : null,
-            commitID,
             locator,
             duration,
             status,

@@ -25,7 +25,6 @@ export class CustomReporter implements jasmine.CustomReporter {
     private _entityIdFilenameMap: Map<number | string, string>
 
     private repoID = process.env.REPO_ID as ID;
-    private commitID = process.env.COMMIT_ID as ID;
     private executionResults = new ExecutionResult();
 
     constructor(runTask: Task<ExecutionResult>, entityIdFilenameMap: Map<number | string, string>) {
@@ -101,7 +100,8 @@ export class CustomReporter implements jasmine.CustomReporter {
         }
         let failureMessage: string | null = null;
         if (result.status === TestStatus.Failed) {
-            failureMessage = result.failedExpectations.map((failedExpectation) => failedExpectation.message).join(', ')
+            failureMessage = result.failedExpectations
+                .map(failedExpectation => failedExpectation.stack || failedExpectation.message).join('\n\n')
         }
         let duration = 0;
         if (result.status === TestStatus.Passed || result.status === TestStatus.Failed) {
@@ -120,7 +120,6 @@ export class CustomReporter implements jasmine.CustomReporter {
                     .update(this.repoID + "\n" + suiteIdentifiers.join("\n"))
                     .digest("hex")
                 : null,
-            this.commitID,
             locator,
             duration,
             result.status as TestStatus,

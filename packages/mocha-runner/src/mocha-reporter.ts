@@ -85,7 +85,7 @@ class MochaReporter extends Mocha.reporters.Base {
         });
 
         runner.on(EVENT_TEST_FAIL, (test: Mocha.Test, err: Error) => {
-            const failureMessage = (err.message || err.stack) ?? 'unknown error';
+            const failureMessage = (err.stack || err.message) ?? 'unknown error';
                 this._testResults.push(
                     MochaHelper.transformMochaTestAsTestResult(test, this._specStartTime, 
                         TestStatus.Failed, failureMessage));

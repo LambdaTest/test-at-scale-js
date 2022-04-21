@@ -30,7 +30,6 @@ class JestDiscoverReporter {
 
     async onTestResult(test: Test, testResult: TestResult): Promise<void> {
         const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
 
         testResult.testResults.forEach((jestTest) => {
             const filename = test.path;
@@ -50,7 +49,6 @@ class JestDiscoverReporter {
                         .update(repoID + "\n" + suiteIdentifiers.join("\n"))
                         .digest("hex")
                     : null,
-                commitID,
                 path.relative(Util.REPO_ROOT, filename),
                 Util.getLocator(filename, ancestorTitles, jestTest.title)
             );
@@ -99,9 +97,7 @@ class JestDiscoverReporter {
             orgID,
             branch,
         );
-        // Ensure output path exists
         fs.mkdirSync(path.dirname(DISCOVERY_RESULT_FILE), { recursive: true });
-        // Write data to file
         await JSONStream.stringify(discoveryResult, fs.createWriteStream(DISCOVERY_RESULT_FILE));
 
         const code = !this.hasErrors ? 0 : this._globalConfig.testFailureExitCode;
