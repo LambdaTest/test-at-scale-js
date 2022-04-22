@@ -174,16 +174,19 @@ export class Util {
         return str.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'); // $& means the whole matched string
     }
     static async findImpactedTests(
-        testsDepsMap: TestsDependenciesMap | null, 
         tests: Test[],
-        changedFilesSet: Set<string>
+        changedFilesSet: Set<string> | undefined,
+        testFiles: string[]
     ): Promise<[ID[], boolean]>  {
-        // 
-        let executeAllTests = false;
-        // skip listing of dependencies if no changed files or smart mode not available
-        if (changedFilesSet.size === 0 || !await this.isSmartSelectAvailable()) {
-            executeAllTests = true;
-            return [[], executeAllTests];
+        const testsDepsMap = await Util.listDependencies(testFiles);
+
+        // no --diff passed or smartModule not available => skip dependency checks and executeAllTests
+        if (changedFilesSet === undefined || !await this.isSmartSelectAvailable()) {
+            return [[], true];
+        }
+        // empty --diff passed => skip dependency checks
+        if (changedFilesSet.size === 0) {
+            return [[], false];
         }
         const impactedTests = new Set<ID>();
         for (const test of tests) {
@@ -202,7 +205,7 @@ export class Util {
             }
         }
 
-        return [Array.from(impactedTests), executeAllTests];
+        return [Array.from(impactedTests), false];
     }
 
 

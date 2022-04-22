@@ -39,18 +39,17 @@ class JasmineRunner implements TestRunner {
         const postTestListEndpoint = process.env.ENDPOINT_POST_TEST_LIST as string || "";
         const branch = process.env.BRANCH_NAME as string;
         const testFilesGlob = argv.pattern as string | string[];
-        const changedFiles = argv.diff as Array<string>;
-        const changedFilesSet = new Set(changedFiles);
+        const changedFilesSet = argv.diff === undefined ? undefined : new Set(argv.diff as string | string[]);
+
 
         try {
             const testFiles = glob.sync(testFilesGlob).map(file => path.resolve(file));
-            const testsDepsMap = await Util.listDependencies(testFiles);
             const jasmineObj = await this.createJasmineRunner(argv.config);
             await this.loadSpecs(jasmineObj, testFiles, entityIdFilenameMap);
             const rootSuite = jasmineObj.env.topSuite();
             this.listTestsAndTestSuites(rootSuite, tests, testSuites, entityIdFilenameMap);
             Util.handleDuplicateTests(tests);
-            const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
+            const [impactedTests, executeAllTests] = await Util.findImpactedTests(tests, changedFilesSet, testFiles);
 
             const result = new DiscoveryResult(tests, testSuites, impactedTests,
                 repoID, commitID, buildID, taskID, orgID, branch, executeAllTests);
