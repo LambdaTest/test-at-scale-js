@@ -7,11 +7,14 @@ on:
       - main
 
 jobs:
-  build:
+
+  label-checker:
+    name: pr label check
     runs-on: ubuntu-latest
+
     steps:
       - name: PR Label Check
-        uses: docker://agilepathway/pull-request-label-checker:latest
+        uses: yashhy/pr-label-check-and-comment-action@master
         with:
-          one_of: release:major,release:minor,release:patch
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          required_labels: 'release:minor, release:major, release:patch'
+          GITHUB_TOKEN: '${{secrets.GITHUB_TOKEN}}'
