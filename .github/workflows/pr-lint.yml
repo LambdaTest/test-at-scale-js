@@ -3,6 +3,7 @@ name: PR Linting
 
 on:
   pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize', 'labeled', 'unlabeled']
     branches:
       - main
 
