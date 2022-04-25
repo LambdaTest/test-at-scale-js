@@ -1,53 +1,81 @@
 name: Custom Runners Release
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
 
 jobs:
 
   Release:
-    if: github.event.pull_request.merged == true
+
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        label: ${{ github.event.pull_request.labels.*.name }}
 
     steps:
 
-      - if: startsWith(matrix.label, 'release:')
-        name: Retrieving Release Type
-        run: |
-          release_type=`echo ${{matrix.label}} | awk -F':' '{print $NF}'`
-          echo "RELEASE_TYPE=${release_type}" >> $GITHUB_ENV
-          echo "Releasing: ${release_type}"
+      - name: Check patch label
+        id: check_pr_labels_patch
+        uses: shioyang/check-pr-labels-on-push-action@v1.0.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          labels: '["release:patch"]'
 
-      - if: startsWith(matrix.label, 'release:')
-        name: Set Env
+      - name: Check patch label
+        id: check_pr_labels_minor
+        uses: shioyang/check-pr-labels-on-push-action@v1.0.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          labels: '["release:minor"]'
+
+      - name: Check patch label
+        id: check_pr_labels_major
+        uses: shioyang/check-pr-labels-on-push-action@v1.0.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          labels: '["release:major"]'
+
+      - name: Release Type
+        run: |
+          if [ ${PATCH} == "true" ] ; then
+            echo "RELEASE_TYPE=patch" >> $GITHUB_ENV
+          elif [ ${MAJOR} == "true" ] ; then
+            echo "RELEASE_TYPE=major" >> $GITHUB_ENV
+          elif [ ${MINOR} == "true" ] ; then
+            echo "RELEASE_TYPE=minor" >> $GITHUB_ENV
+          else
+          echo "RELEASE_TYPE=none" >> $GITHUB_ENV
+          fi
+        env:
+          PATCH: ${{ steps.check_pr_labels_patch.outputs.result }}
+          MINOR: ${{ steps.check_pr_labels_minor.outputs.result }}
+          MAJOR: ${{ steps.check_pr_labels_major.outputs.result }}
+
+      - name: Testing Release Type
+        if: env.RELEASE_TYPE == 'none'
+        uses: actions/github-script@v3
+        with:
+          script: |
+              core.setFailed('Release labels were not present in the PR!')
+
+      - name: Set Env
         run: |
           echo "BOTNAME=Custom Runners bot ${GITHUB_REF_SLUG}" >> $GITHUB_ENV
 
-      - if: startsWith(matrix.label, 'release:')
-        name: Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v2.4.0
 
-      - if: startsWith(matrix.label, 'release:')
-        name: Setup Github
+      - name: Setup Github
         run: |
           git config --global user.email "bot@noreply.com"
           git config --global user.name "Release Bot"
 
-      - if: startsWith(matrix.label, 'release:')
-        name: Build and Release
+      - name: Build and Release
         uses: actions/setup-node@v2
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
 
-      - if: startsWith(matrix.label, 'release:')
+      - name: Yarn Install and Publish
         run: yarn install && yarn lint  && lerna publish ${{ env.RELEASE_TYPE }} --force-publish --no-verify-access -y
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -60,4 +88,4 @@ jobs:
           author_name: ${{ env.BOTNAME }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: always() && startsWith(matrix.label, 'release:')
+        if: always()
