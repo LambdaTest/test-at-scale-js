@@ -195,15 +195,15 @@ class JestRunner implements TestRunner {
                 jestArgv.setupFilesAfterEnv = [SETUP_AFTER_ENV_FILE].concat(config.setupFilesAfterEnv);
             }
             if (globalConfig.reporters === undefined) {
-                jestArgv.reporters = reporters.concat(["default"]);
+                reporters = reporters.concat(["default"]);
             } else {
-                jestArgv.reporters = reporters.concat(globalConfig.reporters as string[]);
+                reporters = reporters.concat(globalConfig.reporters);
             }
             jestArgv.runInBand = true;
         } else {
-            jestArgv.reporters = reporters;
             jestArgv.silent = true;
         }
+        jestArgv.reporters = reporters as unknown as string[];
         await runCLI(jestArgv, projectRoots);
     }
 
