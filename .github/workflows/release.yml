@@ -20,14 +20,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           labels: '["release:patch"]'
 
-      - name: Check patch label
+      - name: Check minor label
         id: check_pr_labels_minor
         uses: shioyang/check-pr-labels-on-push-action@v1.0.3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           labels: '["release:minor"]'
 
-      - name: Check patch label
+      - name: Check major label
         id: check_pr_labels_major
         uses: shioyang/check-pr-labels-on-push-action@v1.0.3
         with:
@@ -79,6 +79,12 @@ jobs:
         run: yarn install && yarn lint  && lerna publish ${{ env.RELEASE_TYPE }} --force-publish --no-verify-access -y
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build Cloud Runners
+        run: |
+          gh workflow run -R ${{ secrets.WF_REPO }} ${{ secrets.WF_NAME }} -r main
+        env:
+          GITHUB_TOKEN: ${{secrets.GH_API_TOKEN}}
 
       - name: 'Send alert to slack'
         uses: 8398a7/action-slack@v3

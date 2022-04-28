@@ -1,0 +1,20 @@
+name: PR Linting
+
+on:
+  pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize', 'labeled', 'unlabeled']
+    branches:
+      - main
+
+jobs:
+
+  label-checker:
+    name: pr label check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: PR Label Check
+        uses: yashhy/pr-label-check-and-comment-action@master
+        with:
+          required_labels: 'release:minor, release:major, release:patch'
+          GITHUB_TOKEN: '${{secrets.GITHUB_TOKEN}}'
