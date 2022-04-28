@@ -11,7 +11,6 @@ import {
     ID,
     Locator,
     Test,
-    TestDependencies,
     TestResult,
     TestsDependenciesMap,
     TestSuiteResult,
@@ -35,6 +34,8 @@ export class Util {
     private static blockTestMap: { [key: string]: { source: string, locator: string, status: string }[]; } = {};
     private static blockTestMapInitialized = false;
 
+    static noOp = (): void => { return };
+    
     static getIdentifier(fileName: string, testName: string): string {
         const relFilePath = path.relative(this.REPO_ROOT, fileName);
         return testName + ' (' + relFilePath + ')';
@@ -295,21 +296,6 @@ export class Util {
         for (const suite of discoveryResult.testSuites) {
             suite.totalTests = suiteIdTestCountMap.get(suite.suiteID) ?? 0;
         }
-    }
-
-    static async listDependency(
-        testFile: string,
-        rootDir: string,
-        includeSelf = false,
-        config?: unknown,
-    ): Promise<TestDependencies | null> {
-        return await this.execSmartMode({
-            "function": "listDependency",
-            "testFile": testFile,
-            "rootDir": rootDir,
-            "includeSelf": includeSelf,
-            "config": config
-        });
     }
 
     static async listDependencies(testFiles: string[]): Promise<TestsDependenciesMap | null> {

@@ -31,7 +31,10 @@ export class MochaHelper {
         const testIdentifier = Util.getIdentifier(filename, test.title);
         const locator = Util.getLocator(filename, parentSuites, test.title);
         const blockTest = Util.getBlockTestLocatorProperties(locator);
-        const duration: number = test.duration ?? (new Date()).getTime() - specStartTime.getTime();
+        let duration = 0;
+        if (state === TestStatus.Passed || state === TestStatus.Failed) {
+            duration = test.duration ?? ((new Date()).getTime() - specStartTime.getTime());
+        }
         return new TestResult(
             crypto
                 .createHash("md5")

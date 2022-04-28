@@ -1,6 +1,6 @@
 {
   "name": "@lambdatest/test-at-scale-jasmine-runner",
-  "version": "0.1.4",
+  "version": "0.1.13",
   "description": "Jasmine custom runner",
   "author": "Saurabh Prakash <saurabhp@lambdatest.com>",
   "homepage": "https://github.com/LambdaTest/test-at-scale-js#readme",
@@ -21,12 +21,12 @@
     "test": "echo \"Error: run tests from root\" && exit 1"
   },
   "dependencies": {
-    "@lambdatest/test-at-scale-core": "^0.1.4",
+    "@lambdatest/test-at-scale-core": "^0.1.13",
     "fast-glob": "^3.2.7",
     "yargs": "^17.1.0"
   },
   "peerDependencies": {
     "@types/jasmine": "^3.8.2",
-    "jasmine": "^2.4.1"
+    "jasmine": ">=2.1.0"
   }
 }

@@ -22,7 +22,6 @@ import {
     Test,
     TestRunner,
     Locator,
-    TestsDependenciesMap,
     TestSuite,
     Util,
     Validations,
@@ -31,8 +30,7 @@ import {
     DISCOVERY_RESULT_FILE,
     MATCH_NOTHING_REGEX,
     REPORT_FILE,
-    SETUP_AFTER_ENV_FILE,
-    TESTS_DEPENDENCIES_MAP_FILE
+    SETUP_AFTER_ENV_FILE
 } from "./constants";
 
 class JestRunner implements TestRunner {
@@ -54,7 +52,6 @@ class JestRunner implements TestRunner {
         const taskID = process.env.TASK_ID as ID;
         const orgID = process.env.ORG_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
-        const parallelism = isNaN(Number(process.env.TAS_PARALLELISM)) ? 0 : Number(process.env.TAS_PARALLELISM);
         const postTestListEndpoint = process.env.ENDPOINT_POST_TEST_LIST as string || "";
         const branch = process.env.BRANCH_NAME as string;
         const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
@@ -65,27 +62,20 @@ class JestRunner implements TestRunner {
         }
         const changedFiles = argv.diff as Array<string> | string[];
         const changedFilesSet = new Set(changedFiles);
+        const testsDepsMap = await Util.listDependencies(testFiles);
+
         await this.runJest(testFiles, MATCH_NOTHING_REGEX, [require.resolve("./jest-discover-reporter")]);
 
         const result = (await JSONStream.parse(fs.createReadStream(DISCOVERY_RESULT_FILE))) ?? {};
         const tests: Test[] = (result.tests ?? []).map((test: any) => Test.fromJSON(test));
         const testSuites: TestSuite[] = (result.testSuites ?? []).map(TestSuite.fromJSON);
         Util.handleDuplicateTests(tests);
-
-        const testsDeps = await JSONStream.parse(fs.createReadStream(TESTS_DEPENDENCIES_MAP_FILE));
-        let testsDepsMap: TestsDependenciesMap | null = null;
-        if (testsDeps !== null) {
-            testsDepsMap = new Map<string, Set<string>>();
-            for (const [k, v] of Object.entries(testsDeps)) {
-                testsDepsMap.set(k, new Set<string>(v as string[]));
-            }
-        }
         const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
         const discoveryResult = new DiscoveryResult(tests,
             testSuites,
             impactedTests,
-            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
+            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests);
         if (cleanup) {
             await fs.promises.rm(TAS_DIRECTORY, { recursive: true });
         }
@@ -187,7 +177,6 @@ class JestRunner implements TestRunner {
         const jestArgv: Config.Argv = {
             $0: "jest-runner",
             _: testFilesToProcessList,
-            runInBand: true,
             testNamePattern: testNamePattern,
             useStderr: true,
             silent: true,
@@ -207,6 +196,7 @@ class JestRunner implements TestRunner {
             } else {
                 jestArgv.reporters = reporters.concat(globalConfig.reporters as string[]);
             }
+            jestArgv.runInBand = true;
         } else {
             jestArgv.reporters = reporters;
         }

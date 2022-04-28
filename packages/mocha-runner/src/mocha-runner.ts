@@ -59,7 +59,6 @@ class MochaRunner implements TestRunner {
         const taskID = process.env.TASK_ID as ID;
         const orgID = process.env.ORG_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
-        const parallelism = isNaN(Number(process.env.TAS_PARALLELISM)) ? 0 : Number(process.env.TAS_PARALLELISM);
         const postTestListEndpoint = process.env.ENDPOINT_POST_TEST_LIST as string || "";
         const branch = process.env.BRANCH_NAME as string;
         const testFilesGlob = argv.pattern as string | string[];
@@ -86,7 +85,7 @@ class MochaRunner implements TestRunner {
         const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
 
         const result = new DiscoveryResult(tests, testSuites, impactedTests,
-            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests, parallelism);
+            repoID, commitID, buildID, taskID, orgID, branch, executeAllTests);
         Util.fillTotalTests(result);
         if (postTestListEndpoint) {
             try {
