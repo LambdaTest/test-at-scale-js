@@ -241,10 +241,6 @@ export enum TestStatus {
     Quarantined = 'quarantined'
 }
 
-export enum TestExecutionMode {
-    Combined = 'combined',
-    Individual = 'individual'
-}
 
 export class TestSuiteResult extends TestSuite {
     duration: number;
@@ -372,30 +368,9 @@ export class ExecutionResults {
     }
 }
 
-export type LocatorConfig = {
-    locator: string
-    numberofexecutions: number   
-}
 
 export type LocatorProperties = {
     source: string | null
     status: string
     isBlocked: boolean
-}
-export class InputConfig {
-    mode: string
-    locators:LocatorConfig[]
-    constructor() {
-        this.mode = TestExecutionMode.Combined
-        this.locators = []
-    }
-}
-
-export class LocatorSet {
-    numberofexecutions:number
-    locators: string[]
-    constructor(numberofexecutions:number, locators: string[]) {
-        this.locators = locators
-        this.numberofexecutions = numberofexecutions
-    }
 }

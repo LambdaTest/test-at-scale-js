@@ -17,9 +17,6 @@ import {
     TestSuiteResult,
     TestStatus,
     TestSuite,
-    InputConfig,
-    TestExecutionMode,
-    LocatorSet,
     LocatorProperties
 } from './model';
 import {
@@ -41,13 +38,6 @@ export class Util {
     static getIdentifier(fileName: string, testName: string): string {
         const relFilePath = path.relative(this.REPO_ROOT, fileName);
         return testName + ' (' + relFilePath + ')';
-    }
-
-    // FIXME: This is a bad hack. DO NOT USE this.
-    // This will break if absolute path of test filename contains '(' character.
-    // HOW TO: Remove this usage and add `filename` property in model.Test and model.TestSuite
-    static getFilenameFromIdentifier(identifier: string): string {
-        return identifier.substring(identifier.lastIndexOf("(") + 1, identifier.length - 1);
     }
 
     static getLocator(currentFullPath: string, testSuites: string[], testName: string): Locator {
@@ -205,51 +195,14 @@ export class Util {
     }
 
 
-    static validateLocatorConfig(inputConfig: InputConfig): void {
-        if (inputConfig.mode != TestExecutionMode.Combined &&
-            inputConfig.mode != TestExecutionMode.Individual) {
-            throw Error("Invalid mode value in locator config file")
-        }
-        for (const locator of inputConfig.locators) {
-            if (locator == undefined || locator.locator.length == 0) {
-                throw Error("missing locator in config file")
-            }
-            if (locator.numberofexecutions == undefined) {
-                throw Error("missing numberofexecutions in config file")
-            }
-            if (isNaN(locator.numberofexecutions)) {
-                throw Error("Invalid numberofexecutions")
-            }
-        }
-    }
-  
-    static getLocatorsConfigFromFile(filePath: string): InputConfig {
-        const inputConfig = JSON.parse(fs.readFileSync(filePath).toString());
-        this.validateLocatorConfig(inputConfig)
-        return inputConfig
-    }
 
-    static createLocatorSet(config: InputConfig): LocatorSet[] {
-        const locatorSet: LocatorSet[] = []
-        const locatorMap: Map<number, string[]> = new Map<number, string[]>()
-        switch (config.mode) {
-            case TestExecutionMode.Individual:
-                for (const locator of config.locators) {
-                    locatorSet.push(new LocatorSet(locator.numberofexecutions, [locator.locator]))
-                }
-                break;
-            case TestExecutionMode.Combined:
-                for (const locator of config.locators) {
-                    const record = locatorMap.get(locator.numberofexecutions) ?? [];
-                    record.push(locator.locator)
-                    locatorMap.set(locator.numberofexecutions, record)
-                }
-                for (const [n, locators] of locatorMap) {
-                    locatorSet.push(new LocatorSet(n, locators))
-                }
-                break;
+    static getLocatorsFromFile(filePath: string): Array<string> {
+        const locators = Array<string>();
+        const locatorFile = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        for (const locatorConfig of locatorFile.locators) {
+            locators.push(locatorConfig.locator)
         }
-        return locatorSet
+        return locators;
     }
 
     static handleDuplicateTests(tests: Test[]): void {
