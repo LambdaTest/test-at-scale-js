@@ -178,8 +178,6 @@ class JestRunner implements TestRunner {
             $0: "jest-runner",
             _: testFilesToProcessList,
             testNamePattern: testNamePattern,
-            useStderr: true,
-            silent: true,
             config: argv.config,
             collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE
         };
