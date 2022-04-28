@@ -20,7 +20,6 @@ export class MochaHelper {
         failureMessage?: string,
     ): TestResult {
         const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
         const filename = test.file || "";
 
         const parentSuites: string[] = [];
@@ -48,7 +47,6 @@ export class MochaHelper {
                     .update(repoID + "\n" + suiteIdentifiers.join("\n"))
                     .digest("hex")
                 : null,
-            commitID,
             locator,
             duration,
             state,

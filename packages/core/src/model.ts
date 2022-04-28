@@ -54,7 +54,6 @@ export class Test {
     title: string;
     filepath: string;
     suiteID: ID | null;
-    commitID: ID;
     locator: Locator;
 
     constructor(
@@ -62,7 +61,6 @@ export class Test {
         _detail: string,
         title: string,
         suiteID: ID | null,
-        commitID: ID,
         filepath: string,
         locator: Locator
     ) {
@@ -70,7 +68,6 @@ export class Test {
         this._detail = _detail;
         this.title = title;
         this.suiteID = suiteID;
-        this.commitID = commitID;
         this.filepath = filepath;
         this.locator = locator;
     }
@@ -81,7 +78,6 @@ export class Test {
             jsonTest._detail,
             jsonTest.title,
             jsonTest.suiteID,
-            jsonTest.commitID,
             jsonTest.filepath,
             Locator.from(jsonTest.locator) as Locator
         );
@@ -189,7 +185,6 @@ export class TestResult extends Test {
         _detail: string,
         title: string,
         suiteID: ID | null,
-        commitID: ID,
         locator: Locator,
         duration: number,
         status: TestStatus,
@@ -198,7 +193,7 @@ export class TestResult extends Test {
         startTime: Date | null,
         failureMessage: string | null,
     ) {
-        super(id, _detail, title, suiteID, commitID, "", locator);
+        super(id, _detail, title, suiteID, "", locator);
         this.duration = duration;
         this.status = status;
         this.blocked = blocked;
@@ -218,7 +213,6 @@ export class TestResult extends Test {
             jsonResult._detail,
             jsonResult.title,
             jsonResult.suiteID,
-            jsonResult.commitID,
             Locator.from(jsonResult.locator) as Locator,
             jsonResult.duration,
             jsonResult.status,

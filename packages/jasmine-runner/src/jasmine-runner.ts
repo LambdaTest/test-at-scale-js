@@ -231,7 +231,6 @@ class JasmineRunner implements TestRunner {
         ancestorTitles: string[] = []
     ) {
         const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
 
         for (const child of currentSuite.children) {
             if ((child as jasmine.Suite).children !== undefined) {
@@ -276,7 +275,6 @@ class JasmineRunner implements TestRunner {
                             .update(repoID + "\n" + suiteIdentifiers.join("\n"))
                             .digest("hex")
                         : null,
-                    commitID,
                     path.relative(Util.REPO_ROOT, filename),
                     Util.getLocator(filename, ancestorTitles, child.description)
                 );
