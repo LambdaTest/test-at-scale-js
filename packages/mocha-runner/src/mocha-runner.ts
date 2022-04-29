@@ -22,7 +22,6 @@ import {
     TestSuiteResult,
     Util,
     Validations,
-    InputConfig
 } from "@lambdatest/test-at-scale-core";
 import { CustomRunner, MochaHelper } from "./helper";
 
@@ -139,16 +138,6 @@ class MochaRunner implements TestRunner {
         // clearing blockTests and suites for next run
         this._blockTests = [];
         this._blockedSuites = [];
-        try {
-            mocha.dispose()
-        }
-        catch(err) {
-            // implies user is using mocha version < 7.2
-            // removing testfile from cache to reload testfiles when new mocha instance is created
-            for (const testFile of testFilesToProcessList) {
-                delete require.cache[testFile];
-            } 
-        }
         return results;
     }
 
@@ -162,7 +151,6 @@ class MochaRunner implements TestRunner {
         const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
-        let locators: InputConfig = new InputConfig();
         const executionResults = new ExecutionResults(
             taskID,
             buildID,
@@ -172,14 +160,9 @@ class MochaRunner implements TestRunner {
         );
 
         if (locatorFile) {
-            locators = Util.getLocatorsConfigFromFile(locatorFile)
-            const locatorSet = Util.createLocatorSet(locators)
-            for (const set of locatorSet) {
-                for (let i = 1; i <= set.numberofexecutions; i++) {
-                    const result = await this.execute(testFilesGlob, set.locators)
-                    executionResults.push(result)
-                }
-            }
+            const locators = Util.getLocatorsFromFile(locatorFile);
+            const result = await this.execute(testFilesGlob, locators);
+            executionResults.push(result);
         } else {
             // run all tests if locator file is not present
             const result = await this.execute(testFilesGlob)

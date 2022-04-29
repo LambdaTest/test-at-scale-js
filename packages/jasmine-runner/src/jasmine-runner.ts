@@ -18,7 +18,6 @@ import {
     Util,
     Validations,
     Task,
-    InputConfig,
 } from "@lambdatest/test-at-scale-core";
 import Jasmine from "jasmine";
 import { CustomReporter } from "./jasmine-reporter"
@@ -137,7 +136,6 @@ class JasmineRunner implements TestRunner {
         const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
-        let locators: InputConfig = new InputConfig();
         const executionResults = new ExecutionResults(
             taskID,
             buildID,
@@ -147,14 +145,9 @@ class JasmineRunner implements TestRunner {
             []
         );
         if (locatorFile) {
-            locators = Util.getLocatorsConfigFromFile(locatorFile)
-            const locatorSet = Util.createLocatorSet(locators)
-            for (const set of locatorSet) {
-                for (let i = 1; i <= set.numberofexecutions; i++) {
-                    const result = await this.execute(testFilesGlob, argv.config, set.locators)
-                    executionResults.push(result)
-                }
-            }
+            const locators = Util.getLocatorsFromFile(locatorFile)
+            const result = await this.execute(testFilesGlob, argv.config, locators)
+            executionResults.push(result)
         } else {
             // run all tests if locator file is not present
             const result = await this.execute(testFilesGlob, argv.config)

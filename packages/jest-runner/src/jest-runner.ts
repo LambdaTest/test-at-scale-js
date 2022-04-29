@@ -25,7 +25,6 @@ import {
     TestSuite,
     Util,
     Validations,
-    InputConfig
 } from "@lambdatest/test-at-scale-core";
 import {
     DISCOVERY_RESULT_FILE,
@@ -91,7 +90,8 @@ class JestRunner implements TestRunner {
         return discoveryResult;
     }
 
-    async execute(testFilesGlob: string| string[], cleanup: string, locators: string[]=[]): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[],
+         cleanup: string, locators: string[] = []): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators);
 
         let testFilesToProcess: Set<string> = new Set();
@@ -143,7 +143,6 @@ class JestRunner implements TestRunner {
         const testFilesGlob = argv.pattern as string | string[];
         const cleanup = (argv.cleanup as string) ? argv.cleanup : "yes";
         const locatorFile = argv.locatorFile as string;
-        let locators: InputConfig = new InputConfig();
         const executionResults = new ExecutionResults(
             taskID,
             buildID,
@@ -152,15 +151,11 @@ class JestRunner implements TestRunner {
             orgID,
         );
         if (locatorFile) {
-            locators = Util.getLocatorsConfigFromFile(locatorFile)
-            const locatorSet = Util.createLocatorSet(locators)
-            for (const set of locatorSet) {
-                for (let i = 1; i <= set.numberofexecutions; i++) {
-                    const result = await this.execute(testFilesGlob, cleanup, set.locators)
-                    executionResults.push(result)
-                }
-            }
-        } else {
+            const locators = Util.getLocatorsFromFile(locatorFile);
+            const result = await this.execute(testFilesGlob, cleanup, locators);
+            executionResults.push(result);
+        }
+        else {
             // run all tests if locator file is not present
             const result = await this.execute(testFilesGlob, cleanup)
             executionResults.push(result)
@@ -194,7 +189,7 @@ class JestRunner implements TestRunner {
                 const config = configs[0];
                 jestArgv.setupFilesAfterEnv = [SETUP_AFTER_ENV_FILE].concat(config.setupFilesAfterEnv);
             }
-            if (globalConfig.reporters === undefined) {
+            if (!globalConfig.reporters) {
                 reporters = reporters.concat(["default"]);
             } else {
                 reporters = reporters.concat(globalConfig.reporters);
