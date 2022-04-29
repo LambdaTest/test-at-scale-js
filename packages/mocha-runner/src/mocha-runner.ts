@@ -182,7 +182,6 @@ class MochaRunner implements TestRunner {
         ancestorTitles: string[] = []
     ) {
         const repoID = process.env.REPO_ID as ID;
-        const commitID = process.env.COMMIT_ID as ID;
 
         for (const childSuite of currentSuite.suites) {
             const filename = childSuite.file ?? "";
@@ -225,7 +224,6 @@ class MochaRunner implements TestRunner {
                         .update(repoID + "\n" + suiteIdentifiers.join("\n"))
                         .digest("hex")
                     : null,
-                commitID,
                 path.relative(Util.REPO_ROOT, filename),
                 Util.getLocator(filename, ancestorTitles, mochaTest.title)
             );

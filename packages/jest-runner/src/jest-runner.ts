@@ -118,7 +118,7 @@ class JestRunner implements TestRunner {
         );
         const executionResult = ExecutionResult.fromJSON(await JSONStream.parse(fs.createReadStream(REPORT_FILE)));
 
-        if (cleanup) {
+        if (cleanup === "yes") {
             await fs.promises.rm(TAS_DIRECTORY, { recursive: true });
         }
         Util.handleDuplicateTests(executionResult.testResults);
@@ -141,7 +141,7 @@ class JestRunner implements TestRunner {
         Validations.validateExecutionEnv(argv);
         const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
-        const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
+        const cleanup = (argv.cleanup as string) ? argv.cleanup : "yes";
         const locatorFile = argv.locatorFile as string;
         const executionResults = new ExecutionResults(
             taskID,
@@ -169,7 +169,7 @@ class JestRunner implements TestRunner {
     private async runJest(
         testFilesToProcessList: string[],
         testNamePattern: string,
-        reporters: string[],
+        reporters: (string | Config.ReporterConfig)[],
         inExecutionPhase = false
     ) {
         const projectRoots = [Util.REPO_ROOT];
@@ -190,14 +190,15 @@ class JestRunner implements TestRunner {
                 jestArgv.setupFilesAfterEnv = [SETUP_AFTER_ENV_FILE].concat(config.setupFilesAfterEnv);
             }
             if (!globalConfig.reporters) {
-                jestArgv.reporters = reporters.concat(["default"]);
+                reporters = reporters.concat(["default"]);
             } else {
-                jestArgv.reporters = reporters.concat(globalConfig.reporters as string[]);
+                reporters = reporters.concat(globalConfig.reporters);
             }
             jestArgv.runInBand = true;
         } else {
-            jestArgv.reporters = reporters;
+            jestArgv.silent = true;
         }
+        jestArgv.reporters = reporters as unknown as string[];
         await runCLI(jestArgv, projectRoots);
     }
 
