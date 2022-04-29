@@ -28,6 +28,6 @@
   },
   "peerDependencies": {
     "@types/jest": "^27.0.1",
-    "jest": "^27.0.1"
+    "jest": ">=21.2.1"
   }
 }
