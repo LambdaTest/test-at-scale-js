@@ -10,6 +10,7 @@ jobs:
   Release:
 
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.author.name, 'robot-lt')"
 
     steps:
 
@@ -63,11 +64,13 @@ jobs:
 
       - name: Checkout Code
         uses: actions/checkout@v2.4.0
+        with:
+          token: ${{ secrets.GH_API_TOKEN }}
 
       - name: Setup Github
         run: |
-          git config --global user.email "bot@noreply.com"
-          git config --global user.name "Release Bot"
+          git config --global user.name "robot-lt"
+          git config --global user.email "robot-lt@lambdatest.com"
 
       - name: Build and Release
         uses: actions/setup-node@v2
