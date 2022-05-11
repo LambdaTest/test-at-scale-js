@@ -8,7 +8,7 @@ import parser from "yargs-parser";
 import semver from "semver";
 import type { Config } from '@jest/types';
 import { runCLI, getVersion } from "jest";
-import { readConfigs } from "jest-config";
+import { readConfig } from "jest-config";
 import { hideBin } from "yargs/helpers";
 import {
     DiscoveryResult,
@@ -172,7 +172,6 @@ class JestRunner implements TestRunner {
         reporters: (string | Config.ReporterConfig)[],
         inExecutionPhase = false
     ) {
-        const projectRoots = [Util.REPO_ROOT];
         const argv = parser(hideBin(process.argv));
         const jestArgv: Config.Argv = {
             $0: "jest-runner",
@@ -182,12 +181,11 @@ class JestRunner implements TestRunner {
             collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE
         };
         if (inExecutionPhase) {
-            const { globalConfig, configs } = await readConfigs(jestArgv, projectRoots);
+            const { globalConfig, projectConfig } = await readConfig(jestArgv, Util.REPO_ROOT);
             if (semver.lt(getVersion(), "24.0.0")) {
                 jestArgv.setupTestFrameworkScriptFile = SETUP_AFTER_ENV_FILE;
             } else {
-                const config = configs[0];
-                jestArgv.setupFilesAfterEnv = [SETUP_AFTER_ENV_FILE].concat(config.setupFilesAfterEnv);
+                jestArgv.setupFilesAfterEnv = [SETUP_AFTER_ENV_FILE].concat(projectConfig.setupFilesAfterEnv);
             }
             if (!globalConfig.reporters) {
                 reporters = reporters.concat(["default"]);
@@ -199,7 +197,7 @@ class JestRunner implements TestRunner {
             jestArgv.silent = true;
         }
         jestArgv.reporters = reporters as unknown as string[];
-        await runCLI(jestArgv, projectRoots);
+        await runCLI(jestArgv, [Util.REPO_ROOT]);
     }
 
     private getBlockTestAndTestRegex(testFiles: string[], testLocators: Set<string>): [string, Set<string>] {
