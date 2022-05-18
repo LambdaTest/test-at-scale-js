@@ -46,7 +46,7 @@ export class Util {
         for (let i = testSuites.length - 1; i >= 0; i--) {
             locator = new Locator(testSuites[i], locator);
         }
-        const currentRelativePath = path.join (this.MODULE_PATH , path.relative(this.REPO_ROOT, currentFullPath));
+        const currentRelativePath = path.join(this.MODULE_PATH , path.relative(this.REPO_ROOT, currentFullPath));
         locator = new Locator(currentRelativePath, locator);
         return locator;
     }
