@@ -93,12 +93,32 @@ export class Util {
         return this.blockTestMap;
     }
 
+    static findRelativeLocatorPathFromSubModule(submodulePath : string, locator : string) : string{
+
+        let normalizedSubmodulePath  = path.normalize(submodulePath)
+        
+        const idx  = locator.indexOf(normalizedSubmodulePath) 
+        if (idx != -1) {
+            // submodule path will be appended at begining of loactor
+            return locator.slice( idx + normalizedSubmodulePath.length, locator.length )
+        }
+    
+        return locator
+    }
+    
+
     static getFilesFromTestLocators(locators: Set<string>): Set<string> {
         const files = new Set<string>();
         for (const locator of locators) {
             if (locator) {
-                const file = path.resolve(locator.split(LocatorSeparator)[0])
-                files.add(file)
+                if (this.MODULE_PATH === ''){
+                    const file = path.resolve(locator.split(LocatorSeparator)[0])
+                    files.add(file)
+                }else{
+                    const filepath = this.findRelativeLocatorPathFromSubModule(this.MODULE_PATH, locator)
+                    files.add(path.resolve(filepath.split(LocatorSeparator)[0]))
+                }
+                
             }
         }
         return files
