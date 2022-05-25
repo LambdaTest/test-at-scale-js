@@ -177,11 +177,6 @@ export class Util {
         }
         const impactedTests = new Set<ID>();
         for (const test of tests) {
-            if (changedFilesSet.has(test.filepath)) {
-                impactedTests.add(test.testID);
-                // no need to check dependencies if test file changed.
-                continue;
-            }
             if (testsDepsMap) {
                 const testDeps = testsDepsMap.get(path.resolve(test.filepath)) ?? new Set();
                 for (const changedFile of changedFilesSet) {
@@ -301,7 +296,8 @@ export class Util {
     static async listDependencies(testFiles: string[]): Promise<TestsDependenciesMap | null> {
         const testsDeps = await this.execSmartMode({
             "function": "listDependencies",
-            "testFiles": testFiles
+            "testFiles": testFiles,
+            "includeSelf": true
         });
         let testsDepsMap: TestsDependenciesMap | null = null;
         if (testsDeps !== null) {
