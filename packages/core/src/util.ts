@@ -99,7 +99,11 @@ export class Util {
         
         const idx  = locator.indexOf(normalizedSubmodulePath) 
         if (idx != -1) {
-            // submodule path will be appended at begining of loactor
+            // submodule path will be appended at begining of locator
+            // if locator contains `/` at start then remove it.
+            if (locator[idx+normalizedSubmodulePath.length] === "/" ) {
+                return  locator.slice( idx + normalizedSubmodulePath.length + 1, locator.length )
+            }
             return locator.slice( idx + normalizedSubmodulePath.length, locator.length )
         }
     
