@@ -297,6 +297,7 @@ export class Util {
     }
 
     static async listDependencies(testFiles: string[]): Promise<TestsDependenciesMap | null> {
+        const st = new Date();
         const testsDeps = await this.execSmartMode({
             "function": "listDependencies",
             "testFiles": testFiles,
@@ -309,6 +310,7 @@ export class Util {
                 testsDepsMap.set(k, new Set<string>(v as string[]));
             }
         }
+        console.log("Listing dependencies took:", (new Date()).getTime() - st.getTime(), "ms");
         return testsDepsMap;
     }
 
