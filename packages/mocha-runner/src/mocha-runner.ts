@@ -59,7 +59,6 @@ class MochaRunner implements TestRunner {
         const taskID = process.env.TASK_ID as ID;
         const orgID = process.env.ORG_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
-        const postTestListEndpoint = process.env.ENDPOINT_POST_TEST_LIST as string || "";
         const branch = process.env.BRANCH_NAME as string;
         const testFilesGlob = argv.pattern as string | string[];
         const testFiles = glob.sync(testFilesGlob).map(file => path.resolve(file));
@@ -87,14 +86,6 @@ class MochaRunner implements TestRunner {
         const result = new DiscoveryResult(tests, testSuites, impactedTests,
             repoID, commitID, buildID, taskID, orgID, branch, executeAllTests);
         Util.fillTotalTests(result);
-        if (postTestListEndpoint) {
-            try {
-                await Util.makeApiRequestPost(postTestListEndpoint, result);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } catch (err: any) {
-                throw new RunnerException(err.stack);
-            }
-        }
         return result;
     }
 
@@ -148,7 +139,6 @@ class MochaRunner implements TestRunner {
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
         Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
         const executionResults = new ExecutionResults(
@@ -167,10 +157,6 @@ class MochaRunner implements TestRunner {
             // run all tests if locator file is not present
             const result = await this.execute(testFilesGlob)
             executionResults.push(result)
-        }
-
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }
         return executionResults;
     }
@@ -343,12 +329,24 @@ class MochaRunner implements TestRunner {
         if (!argv.command) {
             throw Error("Command not provided.");
         }
+        let result: DiscoveryResult | ExecutionResults;
+        let endpoint: string;
+
         if (argv.command === "discover") {
-            await runner.discoverTests(argv);
+            result = await runner.discoverTests(argv);
+            endpoint = process.env.ENDPOINT_POST_TEST_LIST as string || "";
         } else if (argv.command === "execute") {
-            await runner.executeTests(argv);
+            result = await runner.executeTests(argv);
+            endpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         } else {
             throw Error("Unknown/Not implemented command")
+        }
+        if (endpoint) {
+            try {
+                await Util.makeApiRequestPost(endpoint, result);
+            } catch (err: any) {
+                throw new RunnerException(err.stack);
+            }
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {

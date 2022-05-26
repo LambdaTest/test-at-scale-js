@@ -52,7 +52,6 @@ class JestRunner implements TestRunner {
         const taskID = process.env.TASK_ID as ID;
         const orgID = process.env.ORG_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
-        const postTestListEndpoint = process.env.ENDPOINT_POST_TEST_LIST as string || "";
         const branch = process.env.BRANCH_NAME as string;
         const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
         const testFilesGlob = argv.pattern as string
@@ -80,18 +79,11 @@ class JestRunner implements TestRunner {
             await fs.promises.rm(TAS_DIRECTORY, { recursive: true });
         }
         Util.fillTotalTests(discoveryResult);
-        if (postTestListEndpoint) {
-            try {
-                await Util.makeApiRequestPost(postTestListEndpoint, discoveryResult);
-            } catch (err: any) {
-                throw new RunnerException(err.stack);
-            }
-        }
         return discoveryResult;
     }
 
     async execute(testFilesGlob: string | string[],
-         cleanup: string, locators: string[] = []): Promise<ExecutionResult> {
+        cleanup: string, locators: string[] = []): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators);
 
         let testFilesToProcess: Set<string> = new Set();
@@ -139,7 +131,6 @@ class JestRunner implements TestRunner {
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
         Validations.validateExecutionEnv(argv);
-        const postTestResultsEndpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         const testFilesGlob = argv.pattern as string | string[];
         const cleanup = (argv.cleanup as string) ? argv.cleanup : "yes";
         const locatorFile = argv.locatorFile as string;
@@ -159,9 +150,6 @@ class JestRunner implements TestRunner {
             // run all tests if locator file is not present
             const result = await this.execute(testFilesGlob, cleanup)
             executionResults.push(result)
-        }
-        if (postTestResultsEndpoint) {
-            await Util.makeApiRequestPost(postTestResultsEndpoint, executionResults);
         }
         return executionResults;
     }
@@ -271,13 +259,25 @@ class JestRunner implements TestRunner {
         if (!argv.command) {
             throw Error("Command not provided.");
         }
+        let result: DiscoveryResult | ExecutionResults;
+        let endpoint: string;
         if (argv.command === "discover") {
-            await runner.discoverTests(argv);
+            result = await runner.discoverTests(argv);
+            endpoint = process.env.ENDPOINT_POST_TEST_LIST as string || "";
         } else if (argv.command === "execute") {
-            await runner.executeTests(argv);
+            result = await runner.executeTests(argv);
+            endpoint = process.env.ENDPOINT_POST_TEST_RESULTS as string || "";
         } else {
             throw Error("Unknown/Not implemented command")
         }
+        if (endpoint) {
+            try {
+                await Util.makeApiRequestPost(endpoint, result);
+            } catch (err: any) {
+                throw new RunnerException(err.stack);
+            }
+        }
+
     } catch (e: any) {
         console.error(e.stack);
         process.exit(-1);
