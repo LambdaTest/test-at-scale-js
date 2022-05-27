@@ -1,6 +1,31 @@
 import Mocha from "mocha";
+import fs from "fs";
 import crypto from "crypto";
+import parser from "yargs-parser";
 import { ID, TestResult, TASDate as Date, TestStatus, TestSuiteResult, Util } from "@lambdatest/test-at-scale-core";
+
+const shortHandOptsMap = new Map<string, string>(
+    [
+        ["-A", "--async-only"],
+        ["-c", "--colors"],
+        ["-C", "--no-colors"],
+        ["-G", "--growl"],
+        ["-O", "--reporter-options"],
+        ["-R", "--reporter"],
+        ["-S", "--sort"],
+        ["-b", "--bail"],
+        ["-d", "--debug"],
+        ["-g", "--grep"],
+        ["-f", "--fgrep"],
+        ["-gc", "--expose-gc"],
+        ["-i", "--invert"],
+        ["-r", "--require"],
+        ["-s", "--slow"],
+        ["-t", "--timeout"],
+        ["-u", "--ui"],
+        ["-w", "--watch"]
+    ]
+);
 
 export class MochaHelper {
 
@@ -92,6 +117,37 @@ export class MochaHelper {
             blocktest.source,
             suiteStartTime
         );
+    }
+
+    static getFilteredConfigs(argv: parser.Arguments): Mocha.MochaOptions {
+        const args = [];
+        if (argv.config !== undefined) {
+            args.push("--config", argv.config);
+        }
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const loadOptions = require('mocha/lib/cli/options').loadOptions;
+            const opts = loadOptions(args) as Mocha.MochaOptions;
+            opts.parallel = false;
+            return opts;
+        } catch (err) {
+            // implies user is using mocha version < 6
+            console.warn("Using mocha < 6");
+            const optsFilePath = argv.config ?? "./test/mocha.opts";
+            if (fs.existsSync(optsFilePath)) {
+                // Following code translates mocha opts file to longhand opts array
+                const opts = fs
+                    .readFileSync(optsFilePath, 'utf8')
+                    .replace(/^#.*$/gm, '')
+                    .replace(/\\\s/g, '%20')
+                    .split(/\s/)
+                    .filter(Boolean)
+                    .map(value => value.replace(/%20/g, ' '))
+                    .map(value => shortHandOptsMap.get(value) ?? value);
+                return parser(opts) as Mocha.MochaOptions;
+            }
+            return {};
+        }
     }
 }
 

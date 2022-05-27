@@ -35,15 +35,19 @@ class MochaRunner implements TestRunner {
 
     createMochaInstance(): Mocha {
         const argv = parser(hideBin(process.argv), { array: ['diff', "locator"] });
-        const mocha = new Mocha(this.getFilteredConfigs(argv));
+        const mocha = new Mocha(MochaHelper.getFilteredConfigs(argv));
         if (mocha.options.require !== undefined) {
             const cwd = process.cwd();
             module.paths.push(cwd, path.join(cwd, 'node_modules'));
             if (!(mocha.options.require instanceof Array)) {
                 mocha.options.require = [mocha.options.require];
             }
-            for (const file of mocha.options.require) {
-                require(file);
+            for (let mod of mocha.options.require) {
+                const abs = fs.existsSync(mod) || fs.existsSync(mod + '.js');
+                if (abs) {
+                    mod = path.resolve(mod);
+                }
+                require(mod);
             }
         }
         return mocha;
@@ -289,31 +293,6 @@ class MochaRunner implements TestRunner {
                 }
                 this.filterSpecs(childSuite);
             }
-        }
-    }
-
-    private getFilteredConfigs(argv: parser.Arguments): Mocha.MochaOptions {
-        const args = [];
-        if (argv.config !== undefined) {
-            args.push("--config", argv.config);
-        }
-        try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const loadOptions = require('mocha/lib/cli/options').loadOptions;
-            const opts = loadOptions(args) as Mocha.MochaOptions;
-            opts.parallel = false;
-            return opts;
-        } catch (err) {
-            // implies user is using mocha version < 6
-            console.info("Using mocha < 6");
-            const optsFilePath = argv.config ?? "./test/mocha.opts";
-            if (fs.existsSync(optsFilePath)) {
-                // Following code translates newlines separated mocha opts file
-                // to space separated command-line opts string
-                const rawOpts = fs.readFileSync(optsFilePath).toString().split("\n").join(" ");
-                return parser(rawOpts) as Mocha.MochaOptions;
-            }
-            return {};
         }
     }
 }
