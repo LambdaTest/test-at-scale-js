@@ -69,8 +69,7 @@ class MochaRunner implements TestRunner {
         if (testFiles.length === 0) {
             return new DiscoveryResult([], [], [], repoID, commitID, buildID, taskID, orgID, branch);
         }
-        const changedFiles = argv.diff as Array<string>;
-        const changedFilesSet = new Set(changedFiles);
+        const changedFilesSet = argv.diff === undefined ? undefined : new Set(argv.diff as string | string[]);
 
         for (const filename of testFiles) {
             mocha.addFile(filename);
@@ -81,11 +80,10 @@ class MochaRunner implements TestRunner {
             mocha['loadFiles']();
         }
 
-        const testsDepsMap = await Util.listDependencies(testFiles);
         // pass root suite
         this.listTestsAndTestSuites(mocha.suite, tests, testSuites);
         Util.handleDuplicateTests(tests);
-        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
+        const [impactedTests, executeAllTests] = await Util.findImpactedTests(tests, changedFilesSet, testFiles);
 
         const result = new DiscoveryResult(tests, testSuites, impactedTests,
             repoID, commitID, buildID, taskID, orgID, branch, executeAllTests);

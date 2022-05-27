@@ -59,9 +59,7 @@ class JestRunner implements TestRunner {
         if (testFiles.length === 0) {
             return new DiscoveryResult([], [], [], repoID, commitID, buildID, taskID, orgID, branch);
         }
-        const changedFiles = argv.diff as Array<string> | string[];
-        const changedFilesSet = new Set(changedFiles);
-        const testsDepsMap = await Util.listDependencies(testFiles);
+        const changedFilesSet = argv.diff === undefined ? undefined : new Set(argv.diff as string | string[]);
 
         await this.runJest(testFiles, MATCH_NOTHING_REGEX, [require.resolve("./jest-discover-reporter")]);
 
@@ -69,7 +67,7 @@ class JestRunner implements TestRunner {
         const tests: Test[] = (result.tests ?? []).map((test: any) => Test.fromJSON(test));
         const testSuites: TestSuite[] = (result.testSuites ?? []).map(TestSuite.fromJSON);
         Util.handleDuplicateTests(tests);
-        const [impactedTests, executeAllTests] = await Util.findImpactedTests(testsDepsMap, tests, changedFilesSet);
+        const [impactedTests, executeAllTests] = await Util.findImpactedTests(tests, changedFilesSet, testFiles);
 
         const discoveryResult = new DiscoveryResult(tests,
             testSuites,
