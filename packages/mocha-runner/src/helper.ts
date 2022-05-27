@@ -135,8 +135,7 @@ export class MochaHelper {
             console.warn("Using mocha < 6");
             const optsFilePath = argv.config ?? "./test/mocha.opts";
             if (fs.existsSync(optsFilePath)) {
-                // Following code translates newlines separated mocha opts file
-                // to space separated command-line opts string
+                // Following code translates mocha opts file to longhand opts array
                 const opts = fs
                     .readFileSync(optsFilePath, 'utf8')
                     .replace(/^#.*$/gm, '')
