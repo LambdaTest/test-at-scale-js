@@ -60,10 +60,7 @@ class JestRunner implements TestRunner {
         }
         const changedFilesSet = argv.diff === undefined ? undefined : new Set(argv.diff as string | string[]);
 
-        const st = new Date();
         await this.runJest(testFiles, MATCH_NOTHING_REGEX, [require.resolve("./jest-discover-reporter")]);
-
-        console.log("Dry run took:", (new Date()).getTime() - st.getTime(), "ms");
 
         const result = (await JSONStream.parse(fs.createReadStream(DISCOVERY_RESULT_FILE))) ?? {};
         const tests: Test[] = (result.tests ?? []).map((test: any) => Test.fromJSON(test));
