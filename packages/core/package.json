@@ -1,6 +1,6 @@
 {
   "name": "@lambdatest/test-at-scale-core",
-  "version": "0.2.6",
+  "version": "0.2.6-alpha-jest-cache.2",
   "description": "> TODO: description",
   "author": "Saurabh Prakash <saurabhp@lambdatest.com>",
   "homepage": "https://github.com/LambdaTest/test-at-scale-js#readme",
