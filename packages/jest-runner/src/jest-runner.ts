@@ -18,7 +18,6 @@ import {
     JSONStream,
     LocatorSeparator,
     RunnerException,
-    TAS_DIRECTORY,
     Test,
     TestRunner,
     Locator,
@@ -28,6 +27,7 @@ import {
 } from "@lambdatest/test-at-scale-core";
 import {
     DISCOVERY_RESULT_FILE,
+    JEST_CACHE_DIR,
     MATCH_NOTHING_REGEX,
     REPORT_FILE,
     SETUP_AFTER_ENV_FILE
@@ -53,7 +53,6 @@ class JestRunner implements TestRunner {
         const orgID = process.env.ORG_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
         const branch = process.env.BRANCH_NAME as string;
-        const cleanup = (argv.cleanup as boolean) ? argv.cleanup : true;
         const testFilesGlob = argv.pattern as string
         const testFiles = glob.sync(testFilesGlob).map(file => path.resolve(file));
         if (testFiles.length === 0) {
@@ -73,15 +72,11 @@ class JestRunner implements TestRunner {
             testSuites,
             impactedTests,
             repoID, commitID, buildID, taskID, orgID, branch, executeAllTests);
-        if (cleanup) {
-            await fs.promises.rm(TAS_DIRECTORY, { recursive: true });
-        }
         Util.fillTotalTests(discoveryResult);
         return discoveryResult;
     }
 
-    async execute(testFilesGlob: string | string[],
-        cleanup: string, locators: string[] = []): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], locators: string[] = []): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators);
 
         let testFilesToProcess: Set<string> = new Set();
@@ -108,9 +103,6 @@ class JestRunner implements TestRunner {
         );
         const executionResult = ExecutionResult.fromJSON(await JSONStream.parse(fs.createReadStream(REPORT_FILE)));
 
-        if (cleanup === "yes") {
-            await fs.promises.rm(TAS_DIRECTORY, { recursive: true });
-        }
         Util.handleDuplicateTests(executionResult.testResults);
         if (locators.length > 0) {
             executionResult.testResults = Util.filterTestResultsByTestLocator(executionResult.testResults,
@@ -130,7 +122,6 @@ class JestRunner implements TestRunner {
         const commitID = process.env.COMMIT_ID as ID;
         Validations.validateExecutionEnv(argv);
         const testFilesGlob = argv.pattern as string | string[];
-        const cleanup = (argv.cleanup as string) ? argv.cleanup : "yes";
         const locatorFile = argv.locatorFile as string;
         const executionResults = new ExecutionResults(
             taskID,
@@ -141,12 +132,12 @@ class JestRunner implements TestRunner {
         );
         if (locatorFile) {
             const locators = Util.getLocatorsFromFile(locatorFile);
-            const result = await this.execute(testFilesGlob, cleanup, locators);
+            const result = await this.execute(testFilesGlob, locators);
             executionResults.push(result);
         }
         else {
             // run all tests if locator file is not present
-            const result = await this.execute(testFilesGlob, cleanup)
+            const result = await this.execute(testFilesGlob)
             executionResults.push(result)
         }
         return executionResults;
@@ -164,7 +155,8 @@ class JestRunner implements TestRunner {
             _: testFilesToProcessList,
             testNamePattern: testNamePattern,
             config: argv.config,
-            collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE
+            collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE,
+            cacheDirectory: JEST_CACHE_DIR
         };
         if (inExecutionPhase) {
             const { globalConfig, projectConfig } = await readConfig(jestArgv, Util.REPO_ROOT);
