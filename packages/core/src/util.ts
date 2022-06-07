@@ -95,7 +95,7 @@ export class Util {
 
     static findRelativeLocatorPathFromSubModule(submodulePath : string, locator : string) : string{
 
-        let normalizedSubmodulePath  = path.normalize(submodulePath)
+        const normalizedSubmodulePath  = path.normalize(submodulePath)
         
         const idx  = locator.indexOf(normalizedSubmodulePath) 
         if (idx != -1) {
