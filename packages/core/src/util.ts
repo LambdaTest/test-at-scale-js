@@ -28,7 +28,7 @@ const exec = util.promisify(child_process.exec);
 
 export class Util {
     static REPO_ROOT = process.cwd();
-
+    static MODULE_PATH = process.env.MODULE_PATH || ''
     static smartSelectAvailable?: boolean;
 
     private static blockTestMap: { [key: string]: { source: string, locator: string, status: string }[]; } = {};
@@ -37,7 +37,7 @@ export class Util {
     static noOp = (): void => { return };
     
     static getIdentifier(fileName: string, testName: string): string {
-        const relFilePath = path.relative(this.REPO_ROOT, fileName);
+        const relFilePath = this.MODULE_PATH  + path.relative(this.REPO_ROOT, fileName);
         return testName + ' (' + relFilePath + ')';
     }
 
@@ -46,7 +46,7 @@ export class Util {
         for (let i = testSuites.length - 1; i >= 0; i--) {
             locator = new Locator(testSuites[i], locator);
         }
-        const currentRelativePath = path.relative(this.REPO_ROOT, currentFullPath);
+        const currentRelativePath = path.join(this.MODULE_PATH , path.relative(this.REPO_ROOT, currentFullPath));
         locator = new Locator(currentRelativePath, locator);
         return locator;
     }
@@ -73,7 +73,7 @@ export class Util {
             if (!!blockTestFilePath && fs.existsSync(blockTestFilePath)) {
                 const data = JSON.parse(fs.readFileSync(blockTestFilePath).toString());
                 for (const k in data) {
-                    const relativeFilePath = path.relative(this.REPO_ROOT, k);
+                    const relativeFilePath = path.join(this.MODULE_PATH ,  path.relative(this.REPO_ROOT, k));
                     this.blockTestMap[relativeFilePath] = [];
                     for (const blocktest of data[k]) {
                         if (blocktest.locator) {
@@ -93,12 +93,36 @@ export class Util {
         return this.blockTestMap;
     }
 
+    static findRelativeLocatorPathFromSubModule(submodulePath : string, locator : string) : string{
+
+        const normalizedSubmodulePath  = path.normalize(submodulePath)
+        
+        const idx  = locator.indexOf(normalizedSubmodulePath) 
+        if (idx != -1) {
+            // submodule path will be appended at begining of locator
+            // if locator contains `/` at start then remove it.
+            if (locator[idx+normalizedSubmodulePath.length] === "/" ) {
+                return  locator.slice( idx + normalizedSubmodulePath.length + 1, locator.length )
+            }
+            return locator.slice( idx + normalizedSubmodulePath.length, locator.length )
+        }
+    
+        return locator
+    }
+    
+
     static getFilesFromTestLocators(locators: Set<string>): Set<string> {
         const files = new Set<string>();
         for (const locator of locators) {
             if (locator) {
-                const file = path.resolve(locator.split(LocatorSeparator)[0])
-                files.add(file)
+                if (this.MODULE_PATH === ''){
+                    const file = path.resolve(locator.split(LocatorSeparator)[0])
+                    files.add(file)
+                }else{
+                    const filepath = this.findRelativeLocatorPathFromSubModule(this.MODULE_PATH, locator)
+                    files.add(path.resolve(filepath.split(LocatorSeparator)[0]))
+                }
+                
             }
         }
         return files
