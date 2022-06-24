@@ -159,7 +159,8 @@ class JestRunner implements TestRunner {
         };
         if (inExecutionPhase) {
             // jest-config is guaranteed to be present in jest-cli's node_modules if not outside
-            module.paths.push(path.join(require.resolve("jest-cli"), "node_modules"));
+            const jestCLIModuleDir = path.dirname(require.resolve("jest-cli/package.json"));
+            module.paths.push(path.join(jestCLIModuleDir, "node_modules"));
             const { readConfig } = await import("jest-config");
             const { globalConfig, projectConfig } = await readConfig(jestArgv, Util.REPO_ROOT);
             if (semver.lt(getVersion(), "24.0.0")) {
