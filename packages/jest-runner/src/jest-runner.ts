@@ -8,7 +8,6 @@ import parser from "yargs-parser";
 import semver from "semver";
 import type { Config } from '@jest/types';
 import { runCLI, getVersion } from "jest";
-import { readConfig } from "jest-config";
 import { hideBin } from "yargs/helpers";
 import {
     DiscoveryResult,
@@ -159,6 +158,9 @@ class JestRunner implements TestRunner {
             cacheDirectory: JEST_CACHE_DIR
         };
         if (inExecutionPhase) {
+            // jest-config is guaranteed to be present in jest-cli's node_modules if not outside
+            module.paths.push(path.join(require.resolve("jest-cli"), "node_modules"));
+            const { readConfig } = await import("jest-config");
             const { globalConfig, projectConfig } = await readConfig(jestArgv, Util.REPO_ROOT);
             if (semver.lt(getVersion(), "24.0.0")) {
                 jestArgv.setupTestFrameworkScriptFile = SETUP_AFTER_ENV_FILE;
