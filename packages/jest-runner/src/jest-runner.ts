@@ -8,7 +8,6 @@ import parser from "yargs-parser";
 import semver from "semver";
 import type { Config } from '@jest/types';
 import { runCLI, getVersion } from "jest";
-import { readConfig } from "jest-config";
 import { hideBin } from "yargs/helpers";
 import {
     DiscoveryResult,
