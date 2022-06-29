@@ -10,6 +10,7 @@ import {
     TASDate as Date,
     TestResult as TASTestResult,
     TestStatus as TASTestStatus,
+    TestStatus,
     TestSuiteResult as TASTestSuiteResult,
     Util
 } from "@lambdatest/test-at-scale-core";
@@ -92,7 +93,11 @@ class JestReporter {
             // test-case ran (not skipped or blocked). Hence, will have an ordered entry in timings file
             specStartTime = this.timings[this.tIndex++];
         }
-        const duration: number = testCaseResult.duration ?? 0;
+
+        let duration = 0;
+        if (testCaseResult.status === TestStatus.Passed || testCaseResult.status === TestStatus.Failed) {
+            duration = testCaseResult.duration ?? 0;
+        }
 
         const ancestorTitles: string[] = testCaseResult.ancestorTitles;
         const repoID = process.env.REPO_ID as ID;
