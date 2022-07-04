@@ -164,7 +164,7 @@ class JestRunner implements TestRunner {
                  module.paths.push(path.join(jestCLIModuleDir, "node_modules"));
             }
             catch(e){
-                // if jest-cli is not present in `node_modules` then `jest-cli` can be present inside the jest module
+                // if jest-cli is not present then find jest-config in jest's node_modules
                 const jestModuleDir = path.dirname(require.resolve("jest/package.json"));
                 module.paths.push(path.join(jestModuleDir, "node_modules"));
             }
