@@ -176,6 +176,7 @@ class JestRunner implements TestRunner {
             jestArgv.runInBand = true;
         } else {
             jestArgv.silent = true;
+            jestArgv.maxWorkers = Util.getCpus() - 1;
         }
         jestArgv.reporters = reporters as unknown as string[];
         await runCLI(jestArgv, [Util.REPO_ROOT]);
