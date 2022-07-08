@@ -157,7 +157,7 @@ class JestRunner implements TestRunner {
             collectCoverage: inExecutionPhase && !!process.env.TAS_COLLECT_COVERAGE,
             cacheDirectory: JEST_CACHE_DIR
         };
-        if (inExecutionPhase) {  
+        if (inExecutionPhase) {
             const jestModuleDir = path.dirname(require.resolve("jest/package.json"));
             module.paths.push(path.join(jestModuleDir, "node_modules"));
 
