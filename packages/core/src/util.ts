@@ -1,3 +1,4 @@
+import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -369,5 +370,22 @@ export class Util {
             this.smartSelectAvailable = true;
         }
         return this.smartSelectAvailable;
+    }
+
+    static getCpus(): number {
+        function readNumber(file: string) {
+            return Number(fs.readFileSync(file, "utf-8"));
+        }
+        let maybeResult = -1;
+        try {
+            maybeResult = (readNumber("/sys/fs/cgroup/cpu/cpu.cfs_quota_us") /
+                readNumber("/sys/fs/cgroup/cpu/cpu.cfs_period_us"));
+        } catch (err) {
+            this.noOp()
+        }
+        if (maybeResult > 0) {
+            return maybeResult;
+        }
+        return os.cpus().length;
     }
 }
