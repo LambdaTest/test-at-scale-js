@@ -48,7 +48,10 @@ export class CustomReporter implements jasmine.CustomReporter {
         const suiteIdentifiers = this.ancestorTitles
             .map((suiteName) => Util.getIdentifier(filename, suiteName));
         const parentSuiteIdentifiers = suiteIdentifiers.slice(0, -1);
-        const duration: number = result.duration ?? ((new Date()).getTime() - this.suiteStartTime.getTime())
+        let duration = 0;
+        if (result.status === TestStatus.Passed || result.status === TestStatus.Failed) {
+            duration = result.duration ?? ((new Date()).getTime() - this.suiteStartTime.getTime())
+        }
         const locator = Util.getLocator(filename, this.ancestorTitles, result.description);
         const blockTest = Util.getBlockTestLocatorProperties(locator);
         if (blockTest.isBlocked) {
