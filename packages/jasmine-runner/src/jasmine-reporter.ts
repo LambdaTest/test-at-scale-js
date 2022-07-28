@@ -52,6 +52,9 @@ export class CustomReporter implements jasmine.CustomReporter {
         if (result.status === TestStatus.Passed || result.status === TestStatus.Failed) {
             duration = result.duration ?? ((new Date()).getTime() - this.suiteStartTime.getTime())
         }
+        if (result.status === TestStatus.Failed) {
+            fail("suite");
+        }
         const locator = Util.getLocator(filename, this.ancestorTitles, result.description);
         const blockTest = Util.getBlockTestLocatorProperties(locator);
         if (blockTest.isBlocked) {
