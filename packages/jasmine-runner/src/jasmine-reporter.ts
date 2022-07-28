@@ -104,7 +104,9 @@ export class CustomReporter implements jasmine.CustomReporter {
         let failureMessage: string | null = null;
         if (result.status === TestStatus.Failed) {
             failureMessage = result.failedExpectations
-                .map(failedExpectation => failedExpectation.stack || failedExpectation.message).join('\n\n')
+                .map(failedExpectation => failedExpectation.stack || failedExpectation.message).join('\n\n');
+            // fail suite if a spec fails
+            fail("suite");
         }
         let duration = 0;
         if (result.status === TestStatus.Passed || result.status === TestStatus.Failed) {
