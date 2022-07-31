@@ -275,7 +275,7 @@ class MochaRunner implements TestRunner {
                     }
                 }
             }
-            suite.tests = filteredTests;         
+            suite.tests = filteredTests;     
         }
         if (suite.suites) {
             if (shuffleTest){
