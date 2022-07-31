@@ -59,7 +59,7 @@ class JasmineRunner implements TestRunner {
         }
     }
 
-    async execute(testFilesGlob: string | string[], config: string, locators: string[] = []): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], shuffleTest: boolean, config: string, locators: string[] = []): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators)
         const blockTestLocators = new Set<string>()
         const entityIdFilenameMap = new Map<number, string>();
@@ -89,7 +89,7 @@ class JasmineRunner implements TestRunner {
             const rootSuite = jasmineObj.env.topSuite();
             const specIdsToRun: number[] = [];
 
-            this.fetchSpecIdsToRun(rootSuite, specIdsToRun, entityIdFilenameMap,
+            this.fetchSpecIdsToRunAndDetermineOrder(rootSuite, specIdsToRun, shuffleTest, entityIdFilenameMap,
                 testLocators, blockTestLocators);
             
                 if (specIdsToRun.length == 0) {
@@ -127,6 +127,7 @@ class JasmineRunner implements TestRunner {
         const orgID = process.env.ORG_ID as ID;
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
+        const shuffleTest = JSON.parse(process.env.SHUFFLE_TEST as string) as boolean;
         Validations.validateExecutionEnv(argv);
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
@@ -140,11 +141,11 @@ class JasmineRunner implements TestRunner {
         );
         if (locatorFile) {
             const locators = Util.getLocatorsFromFile(locatorFile)
-            const result = await this.execute(testFilesGlob, argv.config, locators)
+            const result = await this.execute(testFilesGlob, shuffleTest, argv.config, locators)
             executionResults.push(result)
         } else {
             // run all tests if locator file is not present
-            const result = await this.execute(testFilesGlob, argv.config)
+            const result = await this.execute(testFilesGlob, shuffleTest, argv.config)
             executionResults.push(result)
         }
         return executionResults;
@@ -265,21 +266,26 @@ class JasmineRunner implements TestRunner {
             }
         }
     }
-
-    private fetchSpecIdsToRun(
+  
+    private fetchSpecIdsToRunAndDetermineOrder(
         currentSuite: jasmine.Suite,
         specIdsToRun: number[],
+        shuffleTest: boolean,
         entityIdFilenameMap: Map<number, string>,
         testLocators: Set<string>,
         blockTestLocators: Set<string>,
         ancestorTitles: string[] = [],
     ) {
-        for (const child of currentSuite.children) {
+        let currentSuiteChildren = currentSuite.children;
+        if (shuffleTest){
+            currentSuiteChildren = Util.shuffle(currentSuite.children);
+        }
+        for (const child of currentSuiteChildren) {
             if ((child as jasmine.Suite).children !== undefined) {
                 // child is a TestSuite
                 const childSuite = child as jasmine.Suite;
                 ancestorTitles.push(child.description);
-                this.fetchSpecIdsToRun(childSuite, specIdsToRun, entityIdFilenameMap,
+                this.fetchSpecIdsToRunAndDetermineOrder(childSuite, specIdsToRun, shuffleTest, entityIdFilenameMap,
                     testLocators, blockTestLocators, ancestorTitles);
                 ancestorTitles.pop();
             } else {
