@@ -38,6 +38,9 @@ export class Validations {
         if (process.env.BUILD_ID === undefined) {
             throw new ValidationException("'BUILD_ID' is not set in environment variables.")
         }
+        if (process.env.SHUFFLE_TEST === undefined) {
+            throw new ValidationException("'SHUFFLE_TEST' is not set in environment variables.")
+        }
     }
 }
 
