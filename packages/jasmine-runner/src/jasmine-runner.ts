@@ -59,7 +59,8 @@ class JasmineRunner implements TestRunner {
         }
     }
 
-    async execute(testFilesGlob: string | string[], shuffleTest: boolean, config: string, locators: string[] = []): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], shuffleTest: boolean, config: string,
+        locators: string[] = []): Promise<ExecutionResult> {
         const testLocators = new Set<string>(locators)
         const blockTestLocators = new Set<string>()
         const entityIdFilenameMap = new Map<number, string>();

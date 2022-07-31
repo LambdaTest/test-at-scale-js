@@ -91,7 +91,8 @@ class MochaRunner implements TestRunner {
         return result;
     }
 
-    async execute(testFilesGlob: string | string[], shuffleTest: boolean, locators: string [] = []): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], shuffleTest: boolean,
+        locators: string [] = []): Promise<ExecutionResult> {
         const mocha = this.createMochaInstance()
         const testRunTask = new Task<void>();
 
