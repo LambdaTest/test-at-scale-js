@@ -1,24 +1,23 @@
 
-![LAMBDATEST Logo](http://labs.lambdatest.com/images/fills-copy.svg)
-
-# Test At Scale
-
-![N|Solid](https://www.lambdatest.com/resources/images/TAS_banner.png)
+# Run JavaScript Tests on TestMu AI (Formerly LambdaTest)
 
 <p align="center">
-  <b>Test Smarter, Release Faster with test-at-scale.</b>
+  <a href="https://www.testmuai.com/"><img src="https://img.shields.io/badge/MADE%20BY%20TestMu%20AI-000000.svg?style=for-the-badge&labelColor=000" alt="Made by TestMu AI"></a>
+  <a href="https://community.testmuai.com/"><img src="https://img.shields.io/badge/Join%20the%20community-blueviolet.svg?style=for-the-badge&labelColor=000000" alt="Community"></a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/LambdaTest/test-at-scale/tree/master/licenses"><img src="https://img.shields.io/badge/license-PolyForm--Shield--1.0.0-lightgrey"></img></a> <a href="https://discord.gg/Wyf8srhf6K"><img src="https://img.shields.io/badge/Discord-5865F2"></img></a>
+## Getting Started
 
-</p>
+TestMu AI (Formerly LambdaTest) is an AI-native, multi-agent quality engineering platform that enables teams to plan, author, execute, analyze, and optimize tests at scale across browsers, devices, and frameworks.
 
-## [Try It!!](https://github.com/LambdaTest/test-at-scale#table-of-contents)
+Custom runners written on top of JavaScript testing frameworks for running test-at-scale on TestMu AI (Formerly LambdaTest). This runner supports Mocha, Jest and Jasmine.
+
+- [Sign up on TestMu AI](https://www.testmuai.com/register/) (Formerly LambdaTest).
+- Follow the [TestMu AI Documentation](https://www.testmuai.com/support/docs/) for the full setup walkthrough.
 
 # test-at-scale-js
 
-Custom runners written on top of javascript testing frameworks. For running [Test-at-scale](https://www.lambdatest.com/test-at-scale) locally, follow [this](https://github.com/LambdaTest/test-at-scale).
+Custom runners written on top of javascript testing frameworks. For running test-at-scale locally, follow [this](https://github.com/LambdaTest/test-at-scale).
 
 This runner supports Mocha, Jest and jasmine. To request support for additional frameworks, raise an issue in this repository.
 
@@ -49,7 +48,7 @@ Monorepo consisting of separate packages for each javascript testing framework m
 Use `lerna` [commands](https://github.com/lerna/lerna/tree/main/commands/add#lernaadd).
 
 ### Building it locally with test-at-scale's nucleus image
-In order to use it (or test it) locally with [test-at-scale's](https://github.com/LambdaTest/test-at-scale) nucleus image, create an npm package zip using command `npm pack` at root of this repo and make the following changes in `nucleus/Dockerfile` (of test-at-scale repo):
+In order to use it (or test it) locally with test-at-scale's nucleus image, create an npm package zip using command `npm pack` at root of this repo and make the following changes in `nucleus/Dockerfile` (of test-at-scale repo):
 
 Replace
 ```
@@ -68,4 +67,26 @@ RUN npm i --global-style --legacy-peer-deps lambdatest-1.0.0.tgz
 
 This project is used by:
 
-- LambdaTest [TAS](https://tas.lambdatest.com/)
+- TestMu AI (Formerly LambdaTest) TAS
+
+## LambdaTest is Now TestMu AI
+
+On **January 12, 2026**, [LambdaTest evolved to TestMu AI](https://www.testmuai.com/lambdatest-is-now-testmuai/), the world's first fully autonomous **Agentic AI Quality Engineering Platform**.
+
+Same team. Same infrastructure. Same customer accounts. All existing LambdaTest logins, scripts, capabilities, and integrations continue to work without change.
+
+ð Find the new home for [LambdaTest](https://www.testmuai.com).
+
+### How LambdaTest Evolved into TestMu AI
+
+In 2017, we launched LambdaTest with a simple mission: make testing fast, reliable, and accessible. As LambdaTest grew, we expanded into Test Intelligence, Visual Regression Testing, Accessibility Testing, API Testing, and Performance Testing, covering the full depth of the testing lifecycle.
+
+As software development entered the AI era, testing had to evolve, too. We rebuilt the architecture to be AI-native from the ground up, with autonomous agents that **plan, author, execute, analyze, and optimize tests** while keeping humans in the loop. The platform integrates with your repos, CI, IDEs, and terminals, continuously learning from every code change and development signal.
+
+That evolution earned a new name: **TestMu AI**, built for an AI-first future of quality engineering. TestMu is not a new name for us. It is the name of our annual community conference, which has brought together 100,000+ quality engineers to discuss how AI would reshape testing, long before that became an industry norm. 
+
+What started as a high-performance cloud testing platform has transformed into an AI-native, multi-agent system powering a connected, end-to-end quality layer. That evolution defined a new identity: LambdaTest evolved into TestMu AI, built for an AI-first future of quality engineering.
+
+## Support
+
+Got a question? Email [support@testmuai.com](mailto:support@testmuai.com) or chat with us 24x7 from our chat portal.
