@@ -52,6 +52,17 @@ export class Util {
         return locator;
     }
 
+    static shuffle(array: Array<any>)
+    {
+        let currentIndex = array.length,  randomIndex;
+        while (currentIndex != 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [
+            array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
     /**
      * Loads blocked tests by reading a file at path specified by env var BLOCK_TESTS_FILE.
      * This works on the assumption that the format of JSON stored in file is in the following format:

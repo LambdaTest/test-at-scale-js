@@ -91,13 +91,14 @@ class MochaRunner implements TestRunner {
         return result;
     }
 
-    async execute(testFilesGlob: string | string[], locators: string[] = []): Promise<ExecutionResult> {
+    async execute(testFilesGlob: string | string[], shuffleTest: boolean,
+        locators: string [] = []): Promise<ExecutionResult> {
         const mocha = this.createMochaInstance()
         const testRunTask = new Task<void>();
 
         this._testlocator = new Set<string>(locators);
 
-        this.extendNativeRunner();
+        this.extendNativeRunner(shuffleTest);
         mocha.reporter(require.resolve("./mocha-reporter"));
 
         let testFilesToProcess: Set<string> = new Set();
@@ -140,6 +141,7 @@ class MochaRunner implements TestRunner {
         const orgID = process.env.ORG_ID as ID;
         const repoID = process.env.REPO_ID as ID;
         const commitID = process.env.COMMIT_ID as ID;
+        const shuffleTest = JSON.parse(process.env.SHUFFLE_TEST as string) as boolean;
         Validations.validateExecutionEnv(argv);
         const testFilesGlob = argv.pattern as string | string[];
         const locatorFile = argv.locatorFile as string;
@@ -153,11 +155,11 @@ class MochaRunner implements TestRunner {
 
         if (locatorFile) {
             const locators = Util.getLocatorsFromFile(locatorFile);
-            const result = await this.execute(testFilesGlob, locators);
+            const result = await this.execute(testFilesGlob, shuffleTest, locators);
             executionResults.push(result);
         } else {
             // run all tests if locator file is not present
-            const result = await this.execute(testFilesGlob)
+            const result = await this.execute(testFilesGlob, shuffleTest)
             executionResults.push(result)
         }
         return executionResults;
@@ -219,19 +221,22 @@ class MochaRunner implements TestRunner {
         }
     }
 
-    private extendNativeRunner() {
+    private extendNativeRunner(shuffleTest: boolean) {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const _self = this;
         // This is the hook point where we can randomizee, specify order
         // or do any sort of stuffs with suites and tests
         Mocha.Runner.prototype.run = function (fn: ((failures: number) => void)) {
-            _self.filterSpecs(this.suite);
+            _self.filterSpecsAndDetermineOrder(this.suite, shuffleTest);
             return originalRun.call(this, fn);
         };
     }
 
-    private filterSpecs(suite: Mocha.Suite) {
+    private filterSpecsAndDetermineOrder(suite: Mocha.Suite, shuffleTest:boolean) {
         if (suite.tests) {
+            if(shuffleTest){
+                suite.tests = Util.shuffle(suite.tests) as Mocha.Test[];
+            }
             const filteredTests: Mocha.Test[] = [];
             for (const test of suite.tests) {
                 const filename = test.file ?? "";
@@ -271,9 +276,12 @@ class MochaRunner implements TestRunner {
                     }
                 }
             }
-            suite.tests = filteredTests;
+            suite.tests = filteredTests;     
         }
         if (suite.suites) {
+            if (shuffleTest){
+                suite.suites = Util.shuffle(suite.suites) as Mocha.Suite[];
+            }
             for (const childSuite of suite.suites) {
                 const filename = childSuite.file ?? "";
                 const parentSuites: string[] = [];
@@ -289,7 +297,7 @@ class MochaRunner implements TestRunner {
                     );
                     this._blockedSuites.push(suiteResult);
                 }
-                this.filterSpecs(childSuite);
+                this.filterSpecsAndDetermineOrder(childSuite, shuffleTest);
             }
         }
     }
