@@ -50,10 +50,23 @@ class MochaRunner implements TestRunner {
                 require(mod);
             }
         }
+        if (mocha.options.files!== undefined) {
+            if (!(mocha.options.files instanceof Array)) {
+                mocha.options.files = [mocha.options.files];
+            }
+            for (let mod of mocha.options.files) {
+                const abs = fs.existsSync(mod) || fs.existsSync(mod + '.js');
+                if (abs) {
+                    mod = path.resolve(mod);
+                }
+                mocha.addFile(mod);
+            }
+        }
         return mocha;
     }
     async discoverTests(argv: parser.Arguments): Promise<DiscoveryResult> {
         const mocha = this.createMochaInstance()
+        await mocha.loadFilesAsync();
         const tests: Test[] = [];
         const testSuites: TestSuite[] = [];
 
@@ -113,6 +126,7 @@ class MochaRunner implements TestRunner {
         for (const filename of testFilesToProcessList) {
             mocha.addFile(filename);
         }
+        await mocha.loadFilesAsync();
         const runnerWithResults: CustomRunner = mocha.run(() => {
             testRunTask.resolve();
         });
